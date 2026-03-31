@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Poiwood — Warm Wood Palette (İlham: D:\Poiwood-WebSite) */
+    --background: 36 63% 96%;       /* Krem beyaz #FAF6F0 */
+    --foreground: 31 51% 16%;       /* Koyu ceviz #3D2914 */
+
+    --card: 0 0% 100%;              /* Beyaz */
+    --card-foreground: 31 51% 16%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 31 51% 16%;
+
+    --primary: 31 51% 16%;          /* Koyu ceviz #3D2914 */
+    --primary-foreground: 36 63% 96%;
+
+    --secondary: 28 47% 84%;        /* Açık ahşap #E8D5C4 */
+    --secondary-foreground: 31 51% 16%;
+
+    --muted: 28 47% 84%;            /* Açık ahşap #E8D5C4 */
+    --muted-foreground: 29 30% 40%;
+
+    --accent: 25 53% 53%;           /* Terracotta #C67D4A */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 28 35% 82%;
+    --input: 28 35% 82%;
+    --ring: 31 51% 16%;
+
+    --radius: 0.5rem;
+
+    /* Ek Poiwood renkleri */
+    --color-dark-walnut: #3D2914;
+    --color-warm-coffee: #8B5A2B;
+    --color-golden-oak: #D4A574;
+    --color-cream-white: #FAF6F0;
+    --color-olive-green: #4A5D23;
+    --color-terracotta: #C67D4A;
+    --color-light-wood: #E8D5C4;
+    --color-shadow: rgba(61, 41, 20, 0.1);
+    --color-dark-shadow: rgba(61, 41, 20, 0.2);
+  }
+
+  .dark {
+    --background: 20 30% 8%;
+    --foreground: 36 30% 92%;
+
+    --card: 20 25% 11%;
+    --card-foreground: 36 30% 92%;
+
+    --popover: 20 25% 11%;
+    --popover-foreground: 36 30% 92%;
+
+    --primary: 31 53% 64%;
+    --primary-foreground: 20 30% 8%;
+
+    --secondary: 20 20% 16%;
+    --secondary-foreground: 36 30% 92%;
+
+    --muted: 20 20% 16%;
+    --muted-foreground: 28 20% 55%;
+
+    --accent: 25 53% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 50% 40%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 20 20% 18%;
+    --input: 20 20% 18%;
+    --ring: 31 53% 64%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-semibold;
+    line-height: 1.2;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, var(--color-warm-coffee), var(--color-terracotta));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .card-shadow {
+    box-shadow: 0 4px 20px var(--color-shadow);
+  }
+  .card-shadow-hover {
+    box-shadow: 0 8px 30px var(--color-dark-shadow);
+  }
+}
+
+/* Drawer / Overlay Animations */
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slideOutLeft {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-slide-out-left {
+  animation: slideOutLeft 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+.animate-fade-out {
+  animation: fadeOut 0.2s ease-out forwards;
+}
+
+/* Page transition */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-page-in {
+  animation: pageIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Lightbox zoom */
+@keyframes lightboxIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes lightboxOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.92); }
+}
+.animate-lightbox-in {
+  animation: lightboxIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-lightbox-out {
+  animation: lightboxOut 0.2s ease-in forwards;
+}
+
+/* Cart toast slide */
+@keyframes slideInBottom {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes slideOutBottom {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+.animate-slide-in-bottom {
+  animation: slideInBottom 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-slide-out-bottom {
+  animation: slideOutBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--color-cream-white); }
+::-webkit-scrollbar-thumb { background: var(--color-golden-oak); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-warm-coffee); }
+
+/* Selection */
+::selection {
+  background-color: var(--color-golden-oak);
+  color: var(--color-dark-walnut);
+}
