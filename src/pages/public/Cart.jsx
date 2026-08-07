@@ -191,6 +191,15 @@ const CartItem = ({ item }) => {
             </p>
           )}
 
+          {/* Beden / Renk */}
+          {(item.variant_size_name || item.variant_color_name) && (
+            <p className="text-xs text-[#8B5A2B] mb-1.5">
+              {item.variant_size_name && `Beden: ${item.variant_size_name}`}
+              {item.variant_size_name && item.variant_color_name && ' • '}
+              {item.variant_color_name && `Renk: ${item.variant_color_name}`}
+            </p>
+          )}
+
           {/* Unit Price */}
           <p className="text-xs text-[#8B5A2B] mb-auto">
             Birim: {Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺

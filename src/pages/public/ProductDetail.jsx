@@ -143,6 +143,8 @@ const ImageGallery = ({ product }) => {
         <img
           src={images[selectedIndex]}
           alt={product.name}
+          loading="eager"
+          decoding="async"
           className={`w-full h-full object-cover transition-transform duration-500 cursor-zoom-in ${zoomed ? 'scale-150' : ''}`}
           onClick={() => setZoomed(!zoomed)}
         />
@@ -198,7 +200,7 @@ const ImageGallery = ({ product }) => {
                 selectedIndex === i ? 'border-[#C67D4A]' : 'border-transparent hover:border-[#E8D5C4]'
               }`}
             >
-              <img src={img} alt="" className="w-full h-full object-cover" />
+              <img src={img} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -210,12 +212,23 @@ const ImageGallery = ({ product }) => {
 /* ============================================================
    PRODUCT INFO
    ============================================================ */
+// Ürün seviyesindeki indirimi verilen fiyata uygular — backend'deki applyProductDiscount ile aynı formül.
+// Sadece görüntü içindir; sepete eklenen fiyat her zaman sunucuda yeniden hesaplanır.
+function applyDiscountClient(product, price) {
+  const value = parseFloat(product.discount_value);
+  if (!product.discount_type || !value || value <= 0 || price == null) return price;
+  if (product.discount_type === 'percentage') return Math.max(0, Math.round((price * (1 - value / 100)) * 100) / 100);
+  return Math.max(0, Math.round((price - value) * 100) / 100);
+}
+
 const ProductInfo = ({ product }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const { addItem, addPending, addError } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
   const isVariable = product.pricing_type !== 'fixed';
+  const hasSizes = (product.sizes?.length || 0) > 0;
+  const hasColors = (product.colors?.length || 0) > 0;
   const liked = isAuthenticated && isFavorite(product.id);
 
   const [quantity, setQuantity] = useState(1);
@@ -226,10 +239,38 @@ const ProductInfo = ({ product }) => {
   const [priceError, setPriceError] = useState('');
   const [addedToCart, setAddedToCart] = useState(false);
 
+  // Beden zorunlu — varsayılan seçim yok. Renk varsa varsayılanı önceden seçili gelir.
+  const [selectedSizeId, setSelectedSizeId] = useState(null);
+  const [selectedColorId, setSelectedColorId] = useState(
+    () => product.colors?.find((c) => c.is_default)?.id || product.colors?.[0]?.id || null
+  );
+
+  const selectedSize = hasSizes ? product.sizes.find((s) => s.id === selectedSizeId) : null;
+  const selectedVariant = (hasSizes || hasColors)
+    ? (product.variants || []).find((v) =>
+        (v.size_id || null) === (selectedSizeId || null) && (v.color_id || null) === (selectedColorId || null)
+      )
+    : null;
+
+  const sizeRequired = hasSizes && !selectedSizeId;
+  const variantStock = (hasSizes || hasColors) ? (selectedVariant ? selectedVariant.stock_quantity : null) : null;
+
   const handleAddToCart = async () => {
-    const unitPrice = isVariable && calculatedPrice
-      ? Number(calculatedPrice)
-      : Number(product.sale_price || product.base_price);
+    let unitPrice;
+    let variantId = null;
+
+    if (hasSizes) {
+      if (!selectedVariant) return; // buton zaten disabled, savunma amaçlı
+      unitPrice = applyDiscountClient(product, parseFloat(selectedSize.price));
+      variantId = selectedVariant.id;
+    } else if (hasColors) {
+      unitPrice = Number(product.sale_price || product.base_price);
+      variantId = selectedVariant ? selectedVariant.id : null;
+    } else if (isVariable && calculatedPrice) {
+      unitPrice = Number(calculatedPrice);
+    } else {
+      unitPrice = Number(product.sale_price || product.base_price);
+    }
 
     await addItem({
       product,
@@ -237,6 +278,9 @@ const ProductInfo = ({ product }) => {
       selected_width_cm: isVariable ? width : undefined,
       selected_height_cm: isVariable ? height : undefined,
       unit_price: unitPrice,
+      variant_id: variantId,
+      variant_size_name: selectedSize?.name || null,
+      variant_color_name: hasColors ? (product.colors.find((c) => c.id === selectedColorId)?.name || null) : null,
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2500);
@@ -274,11 +318,19 @@ const ProductInfo = ({ product }) => {
     }
   }, [isVariable, product.id, width, height]);
 
-  const displayPrice = isVariable && calculatedPrice
+  const sizePrice = hasSizes && selectedSize
+    ? applyDiscountClient(product, parseFloat(selectedSize.price))
+    : null;
+
+  const displayPrice = hasSizes
+    ? (sizePrice != null ? sizePrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : null)
+    : isVariable && calculatedPrice
     ? Number(calculatedPrice).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
     : (salePrice || basePrice);
 
-  const inStock = product.stock_quantity > 0;
+  const inStock = hasSizes || hasColors
+    ? (variantStock !== null && variantStock > 0)
+    : product.stock_quantity > 0;
 
   return (
     <div className="flex-1 min-w-0">
@@ -316,13 +368,20 @@ const ProductInfo = ({ product }) => {
 
       {/* Price */}
       <div className="mb-5 sm:mb-6">
-        {displayPrice ? (
+        {hasSizes && !selectedSize ? (
+          <span className="text-lg font-semibold text-[#8B5A2B]">Fiyat için beden seçin</span>
+        ) : displayPrice ? (
           <div className="flex items-baseline gap-2 flex-wrap">
-            {hasDiscount && !isVariable && (
+            {hasSizes && sizePrice != null && sizePrice < parseFloat(selectedSize.price) && (
+              <span className="text-lg sm:text-xl text-[#8B5A2B]/50 line-through">
+                {Number(selectedSize.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺
+              </span>
+            )}
+            {hasDiscount && !isVariable && !hasSizes && (
               <span className="text-lg sm:text-xl text-[#8B5A2B]/50 line-through">{basePrice}₺</span>
             )}
-            <span className={`text-3xl sm:text-4xl font-bold ${hasDiscount && !isVariable ? 'text-red-500' : 'text-[#C67D4A]'}`}>{displayPrice}₺</span>
-            {hasDiscount && !isVariable && product.discount_type && (
+            <span className={`text-3xl sm:text-4xl font-bold ${(hasDiscount || (hasSizes && sizePrice < parseFloat(selectedSize?.price || 0))) && !isVariable ? 'text-red-500' : 'text-[#C67D4A]'}`}>{displayPrice}₺</span>
+            {((hasDiscount && !hasSizes) || (hasSizes && sizePrice != null && sizePrice < parseFloat(selectedSize.price))) && !isVariable && product.discount_type && (
               <span className="text-sm font-semibold bg-red-50 text-red-500 px-2 py-0.5 rounded-full">
                 {product.discount_type === 'percentage' ? `%${product.discount_value} İndirim` : `₺${product.discount_value} İndirim`}
               </span>
@@ -338,6 +397,66 @@ const ProductInfo = ({ product }) => {
           <span className="text-2xl font-bold text-[#8B5A2B]">Fiyat Sorunuz</span>
         )}
       </div>
+
+      {/* Beden Seçimi */}
+      {hasSizes && (
+        <div className="bg-[#E8D5C4]/30 rounded-2xl p-4 sm:p-5 mb-5 sm:mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Ruler className="w-5 h-5 text-[#C67D4A]" />
+            <h3 className="font-semibold text-[#3D2914]">Beden Seçin *</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {product.sizes.map((s) => {
+              const variantForSize = (product.variants || []).find((v) =>
+                (v.size_id || null) === s.id && (v.color_id || null) === (selectedColorId || null)
+              );
+              const outOfStock = variantForSize ? variantForSize.stock_quantity <= 0 : false;
+              const isSelected = selectedSizeId === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  disabled={outOfStock}
+                  onClick={() => setSelectedSizeId(s.id)}
+                  className={`px-4 py-2 rounded-xl border-2 text-sm font-medium transition-colors ${
+                    isSelected
+                      ? 'border-[#C67D4A] bg-[#C67D4A]/10 text-[#3D2914]'
+                      : outOfStock
+                      ? 'border-[#E8D5C4] text-[#8B5A2B]/40 cursor-not-allowed line-through'
+                      : 'border-[#E8D5C4] text-[#3D2914] hover:border-[#C67D4A]'
+                  }`}
+                >
+                  {s.name} — {Number(s.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺
+                  {outOfStock && ' (Tükendi)'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Renk Seçimi */}
+      {hasColors && (
+        <div className="mb-5 sm:mb-6">
+          <h3 className="font-semibold text-[#3D2914] mb-3 text-sm">
+            Renk{product.colors.find((c) => c.id === selectedColorId) ? `: ${product.colors.find((c) => c.id === selectedColorId).name}` : ''}
+          </h3>
+          <div className="flex flex-wrap gap-2.5">
+            {product.colors.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                title={c.name}
+                onClick={() => setSelectedColorId(c.id)}
+                className={`w-9 h-9 rounded-full border-2 transition-all ${
+                  selectedColorId === c.id ? 'border-[#C67D4A] scale-110 shadow-md' : 'border-white ring-1 ring-[#E8D5C4] hover:scale-105'
+                }`}
+                style={{ backgroundColor: c.hex_code || '#D9C7A3' }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Dimension Calculator */}
       {isVariable && (
@@ -417,14 +536,16 @@ const ProductInfo = ({ product }) => {
             {quantity}
           </span>
           <button
-            onClick={() => setQuantity(q => Math.min(product.stock_quantity, q + 1))}
+            onClick={() => setQuantity(q => Math.min((hasSizes || hasColors) ? (variantStock || 1) : product.stock_quantity, q + 1))}
             className="w-10 h-10 flex items-center justify-center text-[#3D2914] hover:bg-[#E8D5C4]/40 transition-colors"
           >
             <Plus className="w-4 h-4" />
           </button>
         </div>
-        {inStock ? (
-          <span className="text-xs text-[#4A5D23] font-medium">Stokta {product.stock_quantity} adet</span>
+        {sizeRequired ? (
+          <span className="text-xs text-[#8B5A2B] font-medium">Stok için beden seçin</span>
+        ) : inStock ? (
+          <span className="text-xs text-[#4A5D23] font-medium">Stokta {hasSizes || hasColors ? variantStock : product.stock_quantity} adet</span>
         ) : (
           <span className="text-xs text-red-500 font-medium">Stokta yok</span>
         )}
@@ -434,7 +555,7 @@ const ProductInfo = ({ product }) => {
       <div className="flex gap-3 mb-6 sm:mb-8">
         <button
           onClick={handleAddToCart}
-          disabled={!inStock || addPending}
+          disabled={!inStock || addPending || sizeRequired}
           className={`flex-1 flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
             addedToCart
               ? 'bg-[#4A5D23] text-white shadow-[#4A5D23]/20'

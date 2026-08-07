@@ -49,7 +49,7 @@ const HeroSlider = () => {
   const slide = slides[current];
 
   return (
-    <section className="relative w-full h-[55vh] sm:h-[65vh] lg:h-[70vh] min-h-[380px] sm:min-h-[450px] lg:min-h-[500px] overflow-hidden">
+    <section className="relative w-full h-[42vh] sm:h-[65vh] lg:h-[70vh] min-h-[300px] sm:min-h-[450px] lg:min-h-[500px] overflow-hidden">
       {/* Background */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-all duration-700"
@@ -59,8 +59,8 @@ const HeroSlider = () => {
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(61,41,20,0.85) 0%, rgba(61,41,20,0.4) 50%, transparent 100%)' }} />
 
       {/* Content — items-start + pt pushes text toward top */}
-      <div className="relative h-full max-w-[1400px] mx-auto px-5 sm:px-8 flex items-start pt-[15%] sm:pt-[12%] lg:pt-[10%]">
-        <div className="max-w-[500px] lg:max-w-[600px]">
+      <div className="relative h-full max-w-[1400px] mx-auto px-5 sm:px-8 flex items-center sm:items-start justify-center sm:justify-start pt-0 sm:pt-[12%] lg:pt-[10%]">
+        <div className="w-full sm:w-auto max-w-[500px] lg:max-w-[600px] text-center sm:text-left">
           <span className="inline-block bg-[#C67D4A] text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold mb-4 sm:mb-6">
             {slide.subtitle}
           </span>
@@ -223,13 +223,20 @@ const CampaignBanner = () => {
           <div className="rounded-2xl overflow-hidden relative" style={{ background: camp.bg }}>
             {/* BG Image */}
             <div
-              className="absolute top-0 right-0 w-[60%] h-full bg-cover bg-center opacity-90 hidden md:block"
+              className="absolute inset-0 md:inset-auto md:top-0 md:right-0 md:w-[60%] md:h-full bg-cover bg-center opacity-90"
               style={{ backgroundImage: `url(${camp.image})` }}
             />
-            <div className="absolute inset-0 hidden md:block" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.3) 0%, transparent 60%)' }} />
+            <div
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.15) 100%)' }}
+            />
+            <div
+              className="absolute inset-0 hidden md:block"
+              style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.3) 0%, transparent 60%)' }}
+            />
 
             {/* Content */}
-            <div className="relative z-10 p-8 h-[480px] flex flex-col justify-center max-w-[500px]">
+            <div className="relative z-10 p-6 md:p-8 min-h-[420px] md:h-[480px] flex flex-col justify-center max-w-[500px]">
               <span className="text-white/90 text-xs uppercase tracking-widest mb-2">{camp.subtitle}</span>
               <h3 className="text-3xl md:text-4xl font-heading font-bold text-white leading-tight mb-3">{camp.title}</h3>
               <p className="text-white/90 mb-4">{camp.description}</p>
@@ -267,18 +274,20 @@ const CampaignBanner = () => {
             </div>
           </div>
 
-          {/* Arrows */}
+          {/* Arrows — mobilde sağ-üst köşede kompakt çift, masaüstünde yanlarda */}
           <button
             onClick={() => setCurrent((p) => (p - 1 + campaigns.length) % campaigns.length)}
-            className="absolute left-[-20px] top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform z-20 hidden md:flex"
+            aria-label="Önceki kampanya"
+            className="absolute top-3 right-12 left-auto translate-y-0 w-8 h-8 md:top-1/2 md:right-auto md:left-[-20px] md:-translate-y-1/2 md:w-11 md:h-11 rounded-full bg-white/90 md:bg-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform z-20"
           >
-            <ChevronLeft className="w-5 h-5 text-[#3D2914]" />
+            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 text-[#3D2914]" />
           </button>
           <button
             onClick={() => setCurrent((p) => (p + 1) % campaigns.length)}
-            className="absolute right-[-20px] top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform z-20 hidden md:flex"
+            aria-label="Sonraki kampanya"
+            className="absolute top-3 right-3 translate-y-0 w-8 h-8 md:top-1/2 md:right-[-20px] md:-translate-y-1/2 md:w-11 md:h-11 rounded-full bg-white/90 md:bg-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform z-20"
           >
-            <ChevronRight className="w-5 h-5 text-[#3D2914]" />
+            <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-[#3D2914]" />
           </button>
 
           {/* Dots */}

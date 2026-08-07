@@ -8,8 +8,76 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet" />
+    <style>
+      /* Marka logolu açılış yükleme ekranı — JS paketi inmeden önce anında görünür */
+      #app-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background: #FAF6F0;
+        transition: opacity 0.45s ease, visibility 0.45s ease;
+      }
+      #app-loader.app-loader--hidden {
+        opacity: 0;
+        visibility: hidden;
+      }
+      .app-loader__box {
+        position: relative;
+        width: 92px;
+        height: 92px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .app-loader__ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 3px solid rgba(198, 125, 74, 0.2);
+        border-top-color: #C67D4A;
+        animation: app-loader-spin 0.9s linear infinite;
+      }
+      .app-loader__logo {
+        width: 58px;
+        height: 58px;
+        animation: app-loader-pulse 1.6s ease-in-out infinite;
+      }
+      .app-loader__brand {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 20px;
+        letter-spacing: 0.08em;
+        color: #3D2914;
+        opacity: 0.85;
+      }
+      @keyframes app-loader-spin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes app-loader-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .app-loader__ring, .app-loader__logo { animation: none; }
+      }
+    </style>
   </head>
   <body>
+    <div id="app-loader">
+      <div class="app-loader__box">
+        <div class="app-loader__ring"></div>
+        <svg class="app-loader__logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#3D2914" />
+          <text x="5" y="24" font-family="Georgia, serif" font-weight="700" font-size="22" fill="#FFFFFF">P</text>
+          <circle cx="24" cy="10" r="4" fill="#C67D4A" />
+        </svg>
+      </div>
+      <div class="app-loader__brand">Poiwood</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

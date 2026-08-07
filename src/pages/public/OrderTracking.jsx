@@ -222,6 +222,9 @@ const OrderResult = ({ order }) => {
                 <p className="text-sm font-medium text-[#3D2914] line-clamp-1">{item.product_name}</p>
                 <p className="text-xs text-[#8B5A2B]">
                   {item.quantity} adet × {Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺
+                  {item.selected_width_cm && item.selected_height_cm && ` • ${item.selected_width_cm}×${item.selected_height_cm} cm`}
+                  {item.variant_size_name && ` • Beden: ${item.variant_size_name}`}
+                  {item.variant_color_name && ` • Renk: ${item.variant_color_name}`}
                 </p>
               </div>
               <span className="text-sm font-semibold text-[#3D2914] shrink-0">

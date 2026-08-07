@@ -5,8 +5,10 @@ const StoryViewer = ({ groups, initialGroupIndex = 0, onClose }) => {
   const [groupIndex, setGroupIndex] = useState(initialGroupIndex);
   const [storyIndex, setStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   const timerRef = useRef(null);
   const touchStartRef = useRef({ x: 0, y: 0 });
+  const touchHandledRef = useRef(false);
   const containerRef = useRef(null);
   const indexRef = useRef({ groupIndex: initialGroupIndex, storyIndex: 0 });
 
@@ -20,6 +22,7 @@ const StoryViewer = ({ groups, initialGroupIndex = 0, onClose }) => {
   const group = groups[groupIndex];
   const stories = group?.stories || [];
   const story = stories[storyIndex];
+  const currentUrl = story?.image_url;
 
   const goNext = useCallback(() => {
     const { groupIndex: gi, storyIndex: si } = indexRef.current;
@@ -47,9 +50,28 @@ const StoryViewer = ({ groups, initialGroupIndex = 0, onClose }) => {
     }
   }, [groups]);
 
-  // Progress timer
+  // Görsel değişince: sayacı sıfırla, yüklendi bayrağını kapat ve görseli önceden
+  // yükleyerek (cache) yüklenmeyi tespit et. Cache'te ise anında hazır sayılır.
   useEffect(() => {
+    setLoaded(false);
     setProgress(0);
+    clearInterval(timerRef.current);
+    if (!currentUrl) return;
+
+    const img = new Image();
+    img.src = currentUrl;
+    if (img.complete) {
+      setLoaded(true);
+      return;
+    }
+    img.onload = () => setLoaded(true);
+    img.onerror = () => setLoaded(true); // hata olsa da takılıp kalma
+    return () => { img.onload = null; img.onerror = null; };
+  }, [currentUrl]);
+
+  // Progress timer — yalnızca görsel yüklendiğinde çalışır (siyah ekranda süre akmaz)
+  useEffect(() => {
+    if (!loaded) return;
     clearInterval(timerRef.current);
 
     timerRef.current = setInterval(() => {
@@ -64,7 +86,24 @@ const StoryViewer = ({ groups, initialGroupIndex = 0, onClose }) => {
     }, TICK);
 
     return () => clearInterval(timerRef.current);
-  }, [groupIndex, storyIndex, goNext]);
+  }, [loaded, currentUrl, goNext]);
+
+  // Komşu story görsellerini önceden yükle — geçişler anında olsun
+  useEffect(() => {
+    const urls = [];
+    const g = groups[groupIndex];
+    const gStories = g?.stories || [];
+    // sonraki
+    if (storyIndex < gStories.length - 1) urls.push(gStories[storyIndex + 1]?.image_url);
+    else urls.push(groups[groupIndex + 1]?.stories?.[0]?.image_url);
+    // önceki
+    if (storyIndex > 0) urls.push(gStories[storyIndex - 1]?.image_url);
+    else if (groupIndex > 0) {
+      const pg = groups[groupIndex - 1];
+      urls.push(pg?.stories?.[pg.stories.length - 1]?.image_url);
+    }
+    urls.filter(Boolean).forEach((u) => { const img = new Image(); img.src = u; });
+  }, [groupIndex, storyIndex, groups]);
 
   // Keyboard
   useEffect(() => {
@@ -91,6 +130,9 @@ const StoryViewer = ({ groups, initialGroupIndex = 0, onClose }) => {
 
   const handleTouchEnd = (e) => {
     if (e.target.closest('button')) return;
+    // Dokunuşu bu handler işledi; hemen ardından gelen taklit (emulated) click'i yok say
+    touchHandledRef.current = true;
+
     const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
     const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
 
@@ -109,8 +151,12 @@ const StoryViewer = ({ groups, initialGroupIndex = 0, onClose }) => {
     }
   };
 
-  // Click — desktop
+  // Click — desktop (mobilde touchend'den sonra gelen taklit click'i atla → çift atlamayı önler)
   const handleClick = (e) => {
+    if (touchHandledRef.current) {
+      touchHandledRef.current = false;
+      return;
+    }
     if (e.target.closest('button')) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -136,9 +182,16 @@ const StoryViewer = ({ groups, initialGroupIndex = 0, onClose }) => {
         <img
           src={story.image_url}
           alt={story.title || ''}
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           draggable={false}
         />
+
+        {/* Yükleniyor spinner'ı — görsel gelene kadar siyah ekran yerine */}
+        {!loaded && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          </div>
+        )}
 
         {/* Gradient overlays */}
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent" />

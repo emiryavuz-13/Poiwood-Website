@@ -8,7 +8,7 @@ import { getAllCategories } from '../../api/categories';
 import { createProduct } from '../../api/products';
 import {
   getAdminProducts, getAdminProductDetail, updateProduct, deleteProduct,
-  addProductImage, setProductPrimaryImage, removeProductImage,
+  addProductImage, setProductPrimaryImage, removeProductImage, saveProductVariants,
 } from '../../api/admin';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
@@ -370,6 +370,10 @@ export default function Products() {
             flatCategories={flatCategories}
           />
 
+          {view === 'edit' && editingId && form.pricing_type === 'fixed' && (
+            <ProductVariants productId={editingId} />
+          )}
+
           <div className="flex gap-2 justify-end">
             <button onClick={goToList} className="px-4 py-2 text-sm text-[#8B5A2B] hover:bg-[#E8D5C4]/20 rounded-lg">
               İptal
@@ -689,6 +693,305 @@ const ProductForm = ({ form, setForm, flatCategories }) => {
 };
 
 /* ============================================================
+   VARYANTLAR (BEDEN / RENK)
+   ============================================================ */
+const PRESET_COLORS = [
+  { name: 'Kırmızı', hex: '#DC2626' },
+  { name: 'Mavi', hex: '#2563EB' },
+  { name: 'Siyah', hex: '#1F2937' },
+  { name: 'Beyaz', hex: '#F9FAFB' },
+  { name: 'Ceviz', hex: '#5C3A21' },
+  { name: 'Meşe', hex: '#B8860B' },
+  { name: 'Yeşil', hex: '#16A34A' },
+  { name: 'Sarı', hex: '#EAB308' },
+  { name: 'Gri', hex: '#6B7280' },
+  { name: 'Bej', hex: '#D9C7A3' },
+  { name: 'Antrasit', hex: '#374151' },
+  { name: 'Natürel', hex: '#C9A876' },
+];
+
+const genClientId = () => `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+const ProductVariants = ({ productId }) => {
+  const { data: product, isLoading } = useQuery({
+    queryKey: ['adminProductDetail', productId],
+    queryFn: () => getAdminProductDetail(productId),
+  });
+
+  if (isLoading || !product) {
+    return (
+      <div className="bg-white rounded-xl border border-[#E8D5C4]/50 p-5">
+        <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-[#C67D4A]" /></div>
+      </div>
+    );
+  }
+
+  // key={productId}: farklı bir ürün düzenlenmeye başlanınca state sıfırdan kurulsun.
+  // Kaydetme sonrası senkronizasyon useEffect yerine mutation'ın onSuccess'inde yapılır (aşağıda).
+  return <VariantEditor key={productId} productId={productId} initialProduct={product} />;
+};
+
+const mapSizesFromServer = (sizes) => (sizes || []).map((s) => ({
+  client_id: s.id, id: s.id, name: s.name, price: s.price, display_order: s.display_order,
+}));
+const mapColorsFromServer = (colors) => (colors || []).map((c) => ({
+  client_id: c.id, id: c.id, name: c.name, hex_code: c.hex_code, is_default: c.is_default, display_order: c.display_order,
+}));
+const mapStockFromServer = (variants) => {
+  const map = {};
+  (variants || []).forEach((v) => { map[`${v.size_id || 'none'}|${v.color_id || 'none'}`] = v.stock_quantity; });
+  return map;
+};
+
+const VariantEditor = ({ productId, initialProduct }) => {
+  const queryClient = useQueryClient();
+  const [sizes, setSizes] = useState(() => mapSizesFromServer(initialProduct.sizes));
+  const [colors, setColors] = useState(() => mapColorsFromServer(initialProduct.colors));
+  const [stockMap, setStockMap] = useState(() => mapStockFromServer(initialProduct.variants));
+  const [customColorName, setCustomColorName] = useState('');
+  const [customColorHex, setCustomColorHex] = useState('#8B5A2B');
+
+  const addSize = () => setSizes((s) => [...s, { client_id: genClientId(), id: null, name: '', price: '', display_order: s.length }]);
+  const updateSize = (clientId, field, value) => setSizes((s) => s.map((sz) => (sz.client_id === clientId ? { ...sz, [field]: value } : sz)));
+  const removeSize = (clientId) => {
+    setSizes((s) => s.filter((sz) => sz.client_id !== clientId));
+    setStockMap((m) => Object.fromEntries(Object.entries(m).filter(([k]) => !k.startsWith(`${clientId}|`))));
+  };
+
+  const addColorFromPreset = (preset) => {
+    if (colors.some((c) => c.name === preset.name)) return;
+    setColors((c) => [...c, { client_id: genClientId(), id: null, name: preset.name, hex_code: preset.hex, is_default: c.length === 0, display_order: c.length }]);
+  };
+  const addCustomColor = () => {
+    if (!customColorName.trim()) return;
+    setColors((c) => [...c, { client_id: genClientId(), id: null, name: customColorName.trim(), hex_code: customColorHex, is_default: c.length === 0, display_order: c.length }]);
+    setCustomColorName('');
+  };
+  const removeColor = (clientId) => {
+    setColors((c) => {
+      const next = c.filter((cl) => cl.client_id !== clientId);
+      if (next.length && !next.some((cl) => cl.is_default)) next[0] = { ...next[0], is_default: true };
+      return next;
+    });
+    setStockMap((m) => Object.fromEntries(Object.entries(m).filter(([k]) => !k.endsWith(`|${clientId}`))));
+  };
+  const setDefaultColor = (clientId) => setColors((c) => c.map((cl) => ({ ...cl, is_default: cl.client_id === clientId })));
+
+  const stockKey = (sizeId, colorId) => `${sizeId || 'none'}|${colorId || 'none'}`;
+  const getStock = (sizeId, colorId) => stockMap[stockKey(sizeId, colorId)] ?? 0;
+  const setStock = (sizeId, colorId, value) => setStockMap((m) => ({ ...m, [stockKey(sizeId, colorId)]: value }));
+
+  const saveMutation = useMutation({
+    mutationFn: (data) => saveProductVariants(productId, data),
+    onSuccess: (result) => {
+      // Sunucudan dönen gerçek id'lerle senkronize et — yoksa yeni eklenen bir satır
+      // ikinci kaydetmede tekrar INSERT edilip yinelenen bir varyant satırı oluşturur.
+      setSizes(mapSizesFromServer(result.sizes));
+      setColors(mapColorsFromServer(result.colors));
+      setStockMap(mapStockFromServer(result.variants));
+      queryClient.setQueryData(['adminProductDetail', productId], (old) => (old ? { ...old, ...result } : old));
+      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+    },
+  });
+
+  const activeSizes = sizes.filter((s) => s.name.trim());
+  const activeColors = colors.filter((c) => c.name.trim());
+
+  const handleSave = () => {
+    const validSizes = activeSizes.filter((s) => s.price !== '');
+    const payload = {
+      sizes: validSizes.map((s) => ({ id: s.id, client_id: s.client_id, name: s.name.trim(), price: parseFloat(s.price) || 0, display_order: s.display_order })),
+      colors: activeColors.map((c) => ({ id: c.id, client_id: c.client_id, name: c.name.trim(), hex_code: c.hex_code || null, is_default: c.is_default, display_order: c.display_order })),
+      variants: [],
+    };
+
+    const sizeList = validSizes.length ? validSizes : [null];
+    const colorList = activeColors.length ? activeColors : [null];
+    if (validSizes.length || activeColors.length) {
+      for (const s of sizeList) {
+        for (const c of colorList) {
+          if (!s && !c) continue;
+          payload.variants.push({
+            size_client_id: s ? s.client_id : null,
+            color_client_id: c ? c.client_id : null,
+            stock_quantity: parseInt(getStock(s?.client_id, c?.client_id)) || 0,
+          });
+        }
+      }
+    }
+    saveMutation.mutate(payload);
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-[#E8D5C4]/50 p-5 space-y-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-[#3D2914]">Varyantlar (Beden / Renk)</h3>
+        <button
+          onClick={handleSave}
+          disabled={saveMutation.isPending}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#4A5D23] text-white text-xs font-medium hover:bg-[#4A5D23]/90 disabled:opacity-50"
+        >
+          {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          Varyantları Kaydet
+        </button>
+      </div>
+      {saveMutation.isSuccess && <p className="text-xs text-green-600">Varyantlar kaydedildi.</p>}
+      {saveMutation.isError && (
+        <p className="text-xs text-red-500">{saveMutation.error?.response?.data?.message || 'Hata oluştu'}</p>
+      )}
+
+      {/* Bedenler */}
+      <div>
+        <p className="text-xs font-semibold text-[#8B5A2B] mb-2">
+          Bedenler <span className="font-normal text-[#8B5A2B]/70">(opsiyonel — tanımlarsanız müşteri sepete eklemeden önce seçmek zorunda kalır)</span>
+        </p>
+        <div className="space-y-2">
+          {sizes.map((s) => (
+            <div key={s.client_id} className="flex items-center gap-2">
+              <input
+                value={s.name}
+                onChange={(e) => updateSize(s.client_id, 'name', e.target.value)}
+                placeholder="Küçük / 30x40 ..."
+                className="flex-1 px-3 py-1.5 rounded-lg border border-[#E8D5C4] text-sm text-[#3D2914] focus:outline-none focus:border-[#C67D4A]"
+              />
+              <div className="relative w-32">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#8B5A2B]">₺</span>
+                <input
+                  type="number" step="0.01"
+                  value={s.price}
+                  onChange={(e) => updateSize(s.client_id, 'price', e.target.value)}
+                  placeholder="0.00"
+                  className="w-full pl-6 pr-2 py-1.5 rounded-lg border border-[#E8D5C4] text-sm text-[#3D2914] focus:outline-none focus:border-[#C67D4A]"
+                />
+              </div>
+              <button onClick={() => removeSize(s.client_id)} className="p-1.5 rounded-lg text-[#8B5A2B] hover:bg-red-50 hover:text-red-500">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button onClick={addSize} className="mt-2 flex items-center gap-1 text-xs font-medium text-[#C67D4A] hover:underline">
+          <Plus className="w-3.5 h-3.5" /> Beden Ekle
+        </button>
+      </div>
+
+      <div className="border-t border-[#E8D5C4]/30" />
+
+      {/* Renkler */}
+      <div>
+        <p className="text-xs font-semibold text-[#8B5A2B] mb-2">
+          Renkler <span className="font-normal text-[#8B5A2B]/70">(opsiyonel — fiyatı etkilemez, görsel değişmez)</span>
+        </p>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {PRESET_COLORS.map((preset) => (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => addColorFromPreset(preset)}
+              title={preset.name}
+              className="w-7 h-7 rounded-full border-2 border-white shadow ring-1 ring-[#E8D5C4] hover:scale-110 transition-transform"
+              style={{ backgroundColor: preset.hex }}
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <input
+            type="color"
+            value={customColorHex}
+            onChange={(e) => setCustomColorHex(e.target.value)}
+            className="w-9 h-9 rounded-lg border border-[#E8D5C4] cursor-pointer"
+          />
+          <input
+            value={customColorName}
+            onChange={(e) => setCustomColorName(e.target.value)}
+            placeholder="Özel renk adı"
+            className="flex-1 px-3 py-1.5 rounded-lg border border-[#E8D5C4] text-sm text-[#3D2914] focus:outline-none focus:border-[#C67D4A]"
+          />
+          <button onClick={addCustomColor} className="px-3 py-1.5 rounded-lg bg-[#E8D5C4]/50 text-xs font-medium text-[#3D2914] hover:bg-[#E8D5C4]">
+            Ekle
+          </button>
+        </div>
+        {colors.length > 0 && (
+          <div className="space-y-1.5">
+            {colors.map((c) => (
+              <div key={c.client_id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#FAF6F0]">
+                <span className="w-4 h-4 rounded-full ring-1 ring-black/10 shrink-0" style={{ backgroundColor: c.hex_code || '#ccc' }} />
+                <span className="flex-1 text-sm text-[#3D2914]">{c.name}</span>
+                <label className="flex items-center gap-1 text-[11px] text-[#8B5A2B] cursor-pointer">
+                  <input type="radio" name={`default-color-${productId}`} checked={c.is_default} onChange={() => setDefaultColor(c.client_id)} className="accent-[#C67D4A]" />
+                  Varsayılan
+                </label>
+                <button onClick={() => removeColor(c.client_id)} className="p-1 rounded text-[#8B5A2B] hover:bg-red-50 hover:text-red-500">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Stok Matrisi */}
+      {(activeSizes.length > 0 || activeColors.length > 0) && (
+        <>
+          <div className="border-t border-[#E8D5C4]/30" />
+          <div>
+            <p className="text-xs font-semibold text-[#8B5A2B] mb-2">Stok</p>
+            {activeSizes.length > 0 && activeColors.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="text-left text-xs text-[#8B5A2B] font-medium pb-1.5" />
+                      {activeColors.map((c) => (
+                        <th key={c.client_id} className="text-xs text-[#8B5A2B] font-medium pb-1.5 px-1.5">{c.name}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeSizes.map((s) => (
+                      <tr key={s.client_id}>
+                        <td className="text-xs text-[#3D2914] font-medium pr-2 py-1 whitespace-nowrap">{s.name}</td>
+                        {activeColors.map((c) => (
+                          <td key={c.client_id} className="px-1.5 py-1">
+                            <input
+                              type="number" min="0"
+                              value={getStock(s.client_id, c.client_id)}
+                              onChange={(e) => setStock(s.client_id, c.client_id, e.target.value)}
+                              className="w-16 px-2 py-1 rounded-lg border border-[#E8D5C4] text-sm text-center text-[#3D2914] focus:outline-none focus:border-[#C67D4A]"
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {(activeSizes.length > 0 ? activeSizes : activeColors).map((item) => {
+                  const isSize = activeSizes.length > 0;
+                  return (
+                    <div key={item.client_id} className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-[#3D2914]">{item.name}</span>
+                      <input
+                        type="number" min="0"
+                        value={isSize ? getStock(item.client_id, null) : getStock(null, item.client_id)}
+                        onChange={(e) => (isSize ? setStock(item.client_id, null, e.target.value) : setStock(null, item.client_id, e.target.value))}
+                        className="w-20 px-2 py-1 rounded-lg border border-[#E8D5C4] text-sm text-center text-[#3D2914] focus:outline-none focus:border-[#C67D4A]"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+/* ============================================================
    FOTOĞRAF YÖNETİMİ
    ============================================================ */
 const ProductImages = ({ productId, productSlug }) => {
@@ -720,9 +1023,24 @@ const ProductImages = ({ productId, productSlug }) => {
     },
   });
 
+  const MAX_UPLOAD_SIZE = 15 * 1024 * 1024; // 15 MB
+
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    const invalid = files.find((f) => !f.type.startsWith('image/'));
+    if (invalid) {
+      alert(`"${invalid.name}" bir görsel dosyası değil.`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    const tooLarge = files.find((f) => f.size > MAX_UPLOAD_SIZE);
+    if (tooLarge) {
+      alert(`"${tooLarge.name}" 15 MB sınırını aşıyor. Lütfen daha küçük bir dosya seçin.`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     setUploading(true);
     try {
@@ -731,10 +1049,10 @@ const ProductImages = ({ productId, productSlug }) => {
         const ts = Date.now();
         setUploadProgress(`${i + 1}/${files.length} optimize ediliyor...`);
 
-        // Full-size (1600px) ve thumbnail (400px) oluştur
+        // Full-size (1600px) ve thumbnail (800px) oluştur
         const [full, thumb] = await Promise.all([
-          optimizeImage(file, { maxSize: 1600, quality: 0.92 }),
-          optimizeImage(file, { maxSize: 800, quality: 0.92 }),
+          optimizeImage(file, { maxSize: 1600, quality: 0.82 }),
+          optimizeImage(file, { maxSize: 800, quality: 0.82 }),
         ]);
 
         // Full-size yükle
@@ -779,7 +1097,7 @@ const ProductImages = ({ productId, productSlug }) => {
         const response = await fetch(img.firebase_url);
         const blob = await response.blob();
         const file = new File([blob], 'image.webp', { type: blob.type });
-        const { blob: thumbBlob } = await optimizeImage(file, { maxSize: 800, quality: 0.92 });
+        const { blob: thumbBlob } = await optimizeImage(file, { maxSize: 800, quality: 0.82 });
 
         const thumbPath = `products/${productSlug}/thumb_${Date.now()}.webp`;
         const thumbRef = ref(storage, thumbPath);

@@ -130,6 +130,7 @@ const Checkout = () => {
             quantity: i.quantity,
             selected_width_cm: i.selected_width_cm,
             selected_height_cm: i.selected_height_cm,
+            variant_id: i.variant_id,
           })),
         });
       }
@@ -763,6 +764,11 @@ const OrderSummary = ({ items, subtotal, shippingFee, total }) => (
               <p className="text-xs font-medium text-[#3D2914] line-clamp-2 leading-snug">{item.name}</p>
               {item.selected_width_cm && item.selected_height_cm && (
                 <p className="text-[0.65rem] text-[#8B5A2B]">{item.selected_width_cm}x{item.selected_height_cm} cm</p>
+              )}
+              {(item.variant_size_name || item.variant_color_name) && (
+                <p className="text-[0.65rem] text-[#8B5A2B]">
+                  {[item.variant_size_name, item.variant_color_name].filter(Boolean).join(' • ')}
+                </p>
               )}
             </div>
             <span className="text-xs font-semibold text-[#3D2914] shrink-0">

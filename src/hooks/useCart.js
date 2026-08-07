@@ -30,16 +30,17 @@ export const useCart = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cart'] }),
   });
 
-  const addItem = ({ product, quantity, selected_width_cm, selected_height_cm, unit_price }) => {
+  const addItem = ({ product, quantity, selected_width_cm, selected_height_cm, unit_price, variant_id, variant_size_name, variant_color_name }) => {
     if (isAuthenticated) {
       return addMutation.mutateAsync({
         product_id: product.id,
         quantity,
         selected_width_cm,
         selected_height_cm,
+        variant_id,
       });
     }
-    dispatch(addGuestItem({ product, quantity, selected_width_cm, selected_height_cm, unit_price }));
+    dispatch(addGuestItem({ product, quantity, selected_width_cm, selected_height_cm, unit_price, variant_id, variant_size_name, variant_color_name }));
     return Promise.resolve();
   };
 

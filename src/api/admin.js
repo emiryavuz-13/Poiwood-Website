@@ -1,6 +1,6 @@
 import api from './axios';
 
-// ============ DASHBOARD ============
+// ============ DA sSHBOARD ============
 export const getDashboardSummary = async () => {
   const response = await api.get('/dashboard/summary');
   return response.data.data;
@@ -63,6 +63,11 @@ export const setProductPrimaryImage = async (productId, imageId, thumbnailUrl) =
 export const removeProductImage = async (productId, imageId) => {
   const response = await api.delete(`/products/${productId}/images/${imageId}`);
   return response.data;
+};
+
+export const saveProductVariants = async (productId, data) => {
+  const response = await api.put(`/products/${productId}/variants`, data);
+  return response.data.data;
 };
 
 // ============ KATEGORİLER ============

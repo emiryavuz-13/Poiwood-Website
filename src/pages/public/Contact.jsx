@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, Mail, MapPin, Clock, Send, Instagram, Facebook, Twitter, CheckCircle2 } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, Send, Instagram, CheckCircle2 } from 'lucide-react';
 
 const contactInfo = [
   { icon: Phone, label: 'Telefon', value: '+90 212 123 45 67', href: 'tel:+902121234567' },
@@ -9,9 +9,7 @@ const contactInfo = [
 ];
 
 const socials = [
-  { icon: Instagram, label: 'Instagram', href: '#' },
-  { icon: Facebook, label: 'Facebook', href: '#' },
-  { icon: Twitter, label: 'Twitter', href: '#' },
+  { icon: Instagram, label: 'Instagram', href: 'https://www.instagram.com/panelistann/' },
 ];
 
 const Contact = () => {
@@ -85,6 +83,8 @@ const Contact = () => {
                     <a
                       key={s.label}
                       href={s.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="w-10 h-10 rounded-xl bg-[#E8D5C4]/40 flex items-center justify-center text-[#8B5A2B] hover:bg-[#C67D4A] hover:text-white transition-colors"
                       title={s.label}
                     >

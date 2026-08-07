@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Menu, X, Search, ShoppingCart, Heart, User, LogOut, ShieldAlert, Phone, Mail, MapPin, Instagram, Facebook, Twitter, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Menu, X, Search, ShoppingCart, Heart, User, LogOut, ShieldAlert, Phone, Mail, MapPin, Instagram, ArrowRight, AlertTriangle } from 'lucide-react';
 import { authAPI } from '../api/auth';
 import { logout as logoutAction } from '../store/slices/authSlice';
 import { setEmailVerified } from '../store/slices/authSlice';
@@ -15,16 +15,49 @@ const PublicLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState('');
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (isSearchOpen) searchInputRef.current?.focus();
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setIsSearchOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const toggleSearch = () => {
+    setIsMobileMenuOpen(false);
+    setIsSearchOpen((v) => !v);
+  };
+
+  const toggleMobileMenu = () => {
+    setIsSearchOpen(false);
+    setIsMobileMenuOpen((v) => !v);
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const trimmed = searchQuery.trim();
+    navigate(trimmed ? `/products?search=${encodeURIComponent(trimmed)}` : '/products');
+    setIsSearchOpen(false);
+    setSearchQuery('');
+  };
 
   const handleLogout = async () => {
     try {
@@ -85,7 +118,13 @@ const PublicLayout = () => {
             {/* Actions */}
             <div className="flex items-center gap-0 sm:gap-1 ml-auto">
               {/* Search */}
-              <button className="hidden md:flex w-10 h-10 rounded-full items-center justify-center hover:bg-[#E8D5C4] transition-colors" style={{ color: '#3D2914' }}>
+              <button
+                onClick={toggleSearch}
+                aria-label="Arama"
+                aria-expanded={isSearchOpen}
+                className="flex w-10 h-10 rounded-full items-center justify-center hover:bg-[#E8D5C4] transition-colors"
+                style={{ color: '#3D2914' }}
+              >
                 <Search className="w-5 h-5" />
               </button>
 
@@ -124,12 +163,43 @@ const PublicLayout = () => {
               )}
 
               {/* Mobile Menu */}
-              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-[#3D2914]">
+              <button onClick={toggleMobileMenu} className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-[#3D2914]">
                 {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
           </div>
         </div>
+
+        {/* Search Bar */}
+        {isSearchOpen && (
+          <div className="border-t border-[#E8D5C4] bg-[#FAF6F0] animate-in slide-in-from-top-2">
+            <form onSubmit={handleSearchSubmit} className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+              <Search className="w-5 h-5 shrink-0" style={{ color: '#8B5A2B' }} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Ürün ara..."
+                className="flex-1 bg-transparent outline-none text-[#3D2914] placeholder:text-[#8B5A2B]/60 text-sm"
+              />
+              <button
+                type="submit"
+                className="text-sm font-medium px-4 py-1.5 rounded-full bg-[#3D2914] text-white hover:bg-[#3D2914]/90 transition-colors shrink-0"
+              >
+                Ara
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                aria-label="Aramayı kapat"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#3D2914] hover:bg-[#E8D5C4] transition-colors shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
@@ -286,11 +356,15 @@ const PublicLayout = () => {
                 </span>
               </div>
               <div className="flex gap-3">
-                {[Instagram, Facebook, Twitter].map((Icon, i) => (
-                  <a key={i} href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 hover:-translate-y-0.5 transition-all">
-                    <Icon className="w-[18px] h-[18px]" />
-                  </a>
-                ))}
+                <a
+                  href="https://www.instagram.com/panelistann/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 hover:-translate-y-0.5 transition-all"
+                >
+                  <Instagram className="w-[18px] h-[18px]" />
+                </a>
               </div>
             </div>
 

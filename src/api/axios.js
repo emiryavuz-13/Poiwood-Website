@@ -1,12 +1,12 @@
-import axios from 'axios';
-import { auth } from '../lib/firebase';
+import axios from "axios";
+import { auth } from "../lib/firebase";
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5003/api";
 
 const api = axios.create({
   baseURL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -25,20 +25,27 @@ api.interceptors.request.use(
       }
     }
     if (import.meta.env.DEV) {
-      console.log(`📤 [API Request] ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, config.params || '');
+      console.log(
+        `📤 [API Request] ${config.method.toUpperCase()} ${config.baseURL}${config.url}`,
+        config.params || "",
+      );
     }
     return config;
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response Interceptor: Gelen cevaplarda genel hata yönetimi (örn: 401 Unauthorized ise logout yap)
 api.interceptors.response.use(
   (response) => {
     if (import.meta.env.DEV) {
-      console.log(`📥 [API Response] ${response.config.method.toUpperCase()} ${response.config.url}`, response.status, response.data);
+      console.log(
+        `📥 [API Response] ${response.config.method.toUpperCase()} ${response.config.url}`,
+        response.status,
+        response.data,
+      );
     }
     return response;
   },
@@ -49,11 +56,13 @@ api.interceptors.response.use(
       // await auth.signOut();
       // Yönlendirme mantığı App seviyesinde olacak.
       if (import.meta.env.DEV) {
-        console.warn('Oturum süresi dolmuş veya geçersiz! Lütfen tekrar giriş yapın.');
+        console.warn(
+          "Oturum süresi dolmuş veya geçersiz! Lütfen tekrar giriş yapın.",
+        );
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

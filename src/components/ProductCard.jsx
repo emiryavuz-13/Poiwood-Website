@@ -7,16 +7,23 @@ import { useCart } from '../hooks/useCart';
 import { triggerCartToast, triggerFavoriteToast } from './Toast';
 
 const ProductCard = ({ product }) => {
-  const { id, name, base_price, sale_price, discount_type, discount_value, is_weekly_pick, slug, primary_image, primary_thumbnail, avg_rating, review_count, category_name, stock_quantity } = product;
+  const {
+    id, name, base_price, sale_price, discount_type, discount_value, is_weekly_pick, slug,
+    primary_image, primary_thumbnail, avg_rating, review_count, category_name, stock_quantity,
+    has_sizes, has_colors, min_size_price,
+  } = product;
   const navigate = useNavigate();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addItem } = useCart();
 
+  const hasVariants = has_sizes || has_colors;
   const hasDiscount = sale_price && Number(sale_price) < Number(base_price);
   const effectivePrice = hasDiscount ? sale_price : base_price;
   const inStock = stock_quantity > 0;
-  const displayPrice = effectivePrice
+  const displayPrice = has_sizes && min_size_price
+    ? `${Number(min_size_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺'den başlayan`
+    : effectivePrice
     ? `${Number(effectivePrice).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺`
     : 'Fiyat Sorunuz';
 
@@ -55,12 +62,14 @@ const ProductCard = ({ product }) => {
           <img
             src={primary_thumbnail || primary_image || 'https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?w=400&h=400&fit=crop'}
             alt={name}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
 
           {/* Badges */}
           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col items-start gap-1.5">
-            {hasDiscount && (
+            {hasDiscount && !has_sizes && (
               <span className="bg-red-500 text-white text-[0.6rem] sm:text-[0.7rem] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md shadow">
                 {discount_type === 'percentage' ? `%${Number(discount_value)}` : `₺${Number(discount_value)}`} İndirim
               </span>
@@ -120,14 +129,14 @@ const ProductCard = ({ product }) => {
           {/* Price + Cart */}
           <div className="flex items-center justify-between gap-1.5 sm:gap-2">
             <div className="flex flex-col">
-              {hasDiscount && (
+              {hasDiscount && !has_sizes && (
                 <span className="text-[0.65rem] sm:text-xs text-[#8B5A2B]/50 line-through leading-none">
                   {Number(base_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺
                 </span>
               )}
-              <span className={`text-sm sm:text-lg font-bold ${hasDiscount ? 'text-red-500' : 'text-[#C67D4A]'}`}>{displayPrice}</span>
+              <span className={`text-sm sm:text-lg font-bold ${hasDiscount && !has_sizes ? 'text-red-500' : 'text-[#C67D4A]'}`}>{displayPrice}</span>
             </div>
-            {inStock && (
+            {inStock && !hasVariants && (
               <button
                 onClick={handleAddToCart}
                 className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#3D2914] text-white flex items-center justify-center shadow-md hover:scale-105 transition-transform flex-shrink-0"

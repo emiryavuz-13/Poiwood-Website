@@ -27,3 +27,14 @@ createRoot(document.getElementById('root')).render(
     </Provider>
   </StrictMode>
 );
+
+// Uygulama ilk kez boyandıktan sonra açılış yükleme ekranını yumuşakça kaldır
+const appLoader = document.getElementById('app-loader');
+if (appLoader) {
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      appLoader.classList.add('app-loader--hidden');
+      appLoader.addEventListener('transitionend', () => appLoader.remove(), { once: true });
+    })
+  );
+}
