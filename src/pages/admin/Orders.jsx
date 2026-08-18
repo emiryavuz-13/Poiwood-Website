@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Package, Clock, CreditCard, Truck, CheckCircle2, XCircle,
   ChevronDown, ChevronRight, MapPin, Mail, Phone, User,
-  Search, Filter, Send, X, AlertCircle, Loader2,
+  Search, Filter, Send, X, AlertCircle, Loader2, Briefcase,
 } from 'lucide-react';
 import { getAdminOrders, getAdminOrderDetail, updateOrderStatus, addOrderTracking, updateFulfillmentStatus, updateFulfillmentTracking } from '../../api/admin';
 
@@ -19,14 +20,27 @@ const STATUS_MAP = {
 
 const ALL_STATUSES = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
+// Siparişin nereden geldiği: pazarlamacı siparişleri marketer_id taşır, diğerleri taşımaz.
+const SOURCES = [
+  { value: '', label: 'Tüm kaynaklar' },
+  { value: 'online', label: 'İnternet siparişi' },
+  { value: 'marketer', label: 'Pazarlamacı' },
+];
+
 const Orders = () => {
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterSource, setFilterSource] = useState('');
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['adminOrders', filterStatus, page],
-    queryFn: () => getAdminOrders({ status: filterStatus || undefined, page, limit: 15 }),
+    queryKey: ['adminOrders', filterStatus, filterSource, page],
+    queryFn: () => getAdminOrders({
+      status: filterStatus || undefined,
+      source: filterSource || undefined,
+      page,
+      limit: 15,
+    }),
   });
 
   const orders = data?.orders || data || [];
@@ -39,6 +53,30 @@ const Orders = () => {
           <h1 className="text-2xl font-bold text-[#3D2914]">Sipariş Yönetimi</h1>
           <p className="text-sm text-[#8B5A2B] mt-0.5">Siparişleri görüntüle, durumları güncelle ve kargo bilgisi ekle.</p>
         </div>
+      </div>
+
+      {/* Kaynak filtresi */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <span className="text-xs font-medium text-[#8B5A2B]">Kaynak</span>
+        {SOURCES.map((s) => (
+          <button
+            key={s.value}
+            onClick={() => { setFilterSource(s.value); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              filterSource === s.value
+                ? 'bg-[#C67D4A] text-white'
+                : 'bg-white text-[#8B5A2B] border border-[#E8D5C4] hover:border-[#C67D4A]'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+        <Link
+          to="/admin/marketer-orders"
+          className="ml-auto text-xs font-medium text-[#C67D4A] hover:underline"
+        >
+          Pazarlamacı siparişleri sayfası →
+        </Link>
       </div>
 
       {/* Filters */}
@@ -144,7 +182,14 @@ const OrderRow = ({ order, expanded, onToggle }) => {
             <span className="text-xs text-[#8B5A2B] truncate">
               {order.customer_name || order.user_name || order.guest_name || '—'}
             </span>
-            {order.user_id ? (
+            {order.marketer_id ? (
+              <span
+                title={order.marketer_name ? `Pazarlamacı: ${order.marketer_name}` : undefined}
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#C67D4A]/15 text-[#C67D4A] border border-[#C67D4A]/40 shrink-0"
+              >
+                Pazarlamacı{order.marketer_name ? ` · ${order.marketer_name}` : ''}
+              </span>
+            ) : order.user_id ? (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 shrink-0">Üye</span>
             ) : (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0">Misafir</span>
@@ -226,7 +271,9 @@ const OrderDetail = ({ orderId, currentStatus }) => {
         <div>
           <h4 className="text-xs font-semibold text-[#8B5A2B]/70 uppercase tracking-wide mb-2 flex items-center gap-2">
             Müşteri
-            {detail.user_id ? (
+            {detail.marketer_id ? (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#C67D4A]/15 text-[#C67D4A] border border-[#C67D4A]/40 normal-case tracking-normal">Pazarlamacı siparişi</span>
+            ) : detail.user_id ? (
               <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 normal-case tracking-normal">Üye</span>
             ) : (
               <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 normal-case tracking-normal">Misafir</span>
@@ -245,6 +292,24 @@ const OrderDetail = ({ orderId, currentStatus }) => {
               <div className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-[#C67D4A]" />
                 {detail.user_phone || detail.guest_phone || detail.shipping_phone}
+              </div>
+            )}
+
+            {/* Pazarlamacı siparişinde satışı kimin yaptığı ve hak edişi burada görünür. */}
+            {detail.marketer_id && (
+              <div className="mt-2 rounded-lg border border-[#C67D4A]/30 bg-[#C67D4A]/5 p-2.5">
+                <p className="flex items-center gap-2 font-medium text-[#3D2914]">
+                  <Briefcase className="w-3.5 h-3.5 text-[#C67D4A]" />
+                  {detail.marketer_name || detail.marketer_email}
+                </p>
+                <p className="mt-1 text-[11px] text-[#8B5A2B]">
+                  İskonto %{Number(detail.marketer_discount_percent || 0)}
+                  {' · '}Komisyon %{Number(detail.marketer_commission_rate || 0)}
+                  {' · '}
+                  {Number(detail.marketer_commission_amount || 0)
+                    .toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                  {detail.shipping_waived && ' · kargo bedelsiz'}
+                </p>
               </div>
             )}
           </div>

@@ -44,6 +44,14 @@ import BrandQuestions from './pages/brand/Questions';
 import BrandApprovalHistory from './pages/brand/ApprovalHistory';
 import Brands from './pages/admin/Brands';
 import ProductApprovals from './pages/admin/ProductApprovals';
+import MarketerRoute from './components/auth/MarketerRoute';
+import MarketerPanelLayout from './layouts/MarketerPanelLayout';
+import MarketerDashboard from './pages/marketer/Dashboard';
+import MarketerNewOrder from './pages/marketer/NewOrder';
+import MarketerOwnOrders from './pages/marketer/Orders';
+import MarketerCustomers from './pages/marketer/Customers';
+import AdminMarketers from './pages/admin/Marketers';
+import AdminMarketerOrders from './pages/admin/MarketerOrders';
 
 function App() {
   return (
@@ -88,6 +96,8 @@ function App() {
             <Route path="products" element={<Products />} />
             <Route path="product-approvals" element={<ProductApprovals />} />
             <Route path="brands" element={<Brands />} />
+            <Route path="marketers" element={<AdminMarketers />} />
+            <Route path="marketer-orders" element={<AdminMarketerOrders />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="coupons" element={<AdminCoupons />} />
@@ -105,6 +115,15 @@ function App() {
             <Route path="coupons" element={<BrandCoupons />} />
             <Route path="reviews" element={<BrandReviews />} />
             <Route path="questions" element={<BrandQuestions />} />
+          </Route>
+        </Route>
+        {/* Pazarlamacı paneli — marka panelinden farkı: seçilecek bir varlık yok */}
+        <Route path="/marketer-panel" element={<MarketerRoute />}>
+          <Route element={<MarketerPanelLayout />}>
+            <Route index element={<MarketerDashboard />} />
+            <Route path="new-order" element={<MarketerNewOrder />} />
+            <Route path="orders" element={<MarketerOwnOrders />} />
+            <Route path="customers" element={<MarketerCustomers />} />
           </Route>
         </Route>
         {/* 404 */}

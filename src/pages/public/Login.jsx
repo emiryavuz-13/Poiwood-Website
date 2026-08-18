@@ -55,6 +55,8 @@ export default function Login() {
       navigate('/admin', { replace: true });
     } else if (res.user.role === 'brand_manager') {
       navigate('/brand-panel', { replace: true });
+    } else if (res.user.role === 'marketer') {
+      navigate('/marketer-panel', { replace: true });
     } else {
       navigate(from, { replace: true });
     }

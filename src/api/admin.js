@@ -7,8 +7,8 @@ export const getDashboardSummary = async () => {
 };
 
 // ============ SİPARİŞLER ============
-export const getAdminOrders = async ({ status, page = 1, limit = 20 } = {}) => {
-  const response = await api.get('/orders/admin/all', { params: { status, page, limit } });
+export const getAdminOrders = async ({ status, source, marketer_id, page = 1, limit = 20 } = {}) => {
+  const response = await api.get('/orders/admin/all', { params: { status, source, marketer_id, page, limit } });
   return response.data.data;
 };
 
@@ -47,6 +47,13 @@ export const createBrandMember = async (id, data) => (await api.post(`/brands/ad
 export const updateBrandMember = async (id, userId, data) => (await api.patch(`/brands/admin/${id}/members/${userId}`, data)).data.data;
 export const removeBrandMember = async (id, userId) => (await api.delete(`/brands/admin/${id}/members/${userId}`)).data;
 export const resetBrandMemberPassword = async (id, userId, password) => (await api.post(`/brands/admin/${id}/members/${userId}/reset-password`, { password })).data;
+
+// ============ PAZARLAMACILAR ============
+export const getMarketers = async () => (await api.get('/marketers/admin/all')).data.data;
+export const createMarketer = async (data) => (await api.post('/marketers/admin', data)).data.data;
+export const updateMarketer = async (userId, data) => (await api.patch(`/marketers/admin/${userId}`, data)).data.data;
+export const resetMarketerPassword = async (userId, password) => (await api.post(`/marketers/admin/${userId}/reset-password`, { password })).data;
+export const getAdminMarketerOrders = async (params = {}) => (await api.get('/orders/admin/marketer-orders', { params })).data.data;
 
 // ============ ÜRÜN ONAYLARI ============
 export const getProductApprovals = async (params = {}) => (await api.get('/products/admin/approvals', { params })).data.data;

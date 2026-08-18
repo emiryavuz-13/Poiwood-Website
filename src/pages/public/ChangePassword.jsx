@@ -14,7 +14,11 @@ export default function ChangePassword() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (!user?.must_change_password) return <Navigate to={user?.role === 'brand_manager' ? '/brand-panel' : '/'} replace />;
+  // Şifre değişimi sonrası kullanıcı kendi paneline döner; hedef role göre belirlenir.
+  const panelPath = { brand_manager: '/brand-panel', marketer: '/marketer-panel', platform_admin: '/admin' };
+  const homePath = panelPath[user?.role] || '/';
+
+  if (!user?.must_change_password) return <Navigate to={homePath} replace />;
 
   const submit = async (event) => {
     event.preventDefault();
@@ -24,7 +28,7 @@ export default function ChangePassword() {
       setLoading(true); setError('');
       const result = await authAPI.changeTemporaryPassword(password);
       dispatch(setUser(result.user));
-      navigate('/brand-panel', { replace: true });
+      navigate(panelPath[result.user?.role] || homePath, { replace: true });
     } catch (err) {
       setError(err?.response?.data?.message || 'Şifre değiştirilemedi. Lütfen tekrar giriş yapın.');
     } finally { setLoading(false); }

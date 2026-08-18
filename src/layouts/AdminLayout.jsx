@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, FolderTree, Ticket,
   Star, MessageCircleQuestion, Menu, X, ExternalLink, Sparkles, Building2, ClipboardCheck,
+  Users, Briefcase,
 } from 'lucide-react';
 import Logo from '../components/Logo';
 
@@ -11,6 +12,8 @@ const NAV_ITEMS = [
   { to: '/admin/products', label: 'Ürünler', icon: Package },
   { to: '/admin/product-approvals', label: 'Ürün Onayları', icon: ClipboardCheck },
   { to: '/admin/brands', label: 'Markalar', icon: Building2 },
+  { to: '/admin/marketers', label: 'Pazarlamacılar', icon: Users },
+  { to: '/admin/marketer-orders', label: 'Pazarlamacı Siparişleri', icon: Briefcase },
   { to: '/admin/orders', label: 'Siparişler', icon: ShoppingCart },
   { to: '/admin/categories', label: 'Kategoriler', icon: FolderTree },
   { to: '/admin/coupons', label: 'Kuponlar', icon: Ticket },
