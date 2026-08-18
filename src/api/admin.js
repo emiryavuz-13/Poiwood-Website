@@ -27,6 +27,32 @@ export const addOrderTracking = async (orderId, { cargo_company, cargo_tracking_
   return response.data.data;
 };
 
+export const updateFulfillmentStatus = async (fulfillmentId, status) => {
+  const response = await api.patch(`/orders/admin/fulfillments/${fulfillmentId}/status`, { status });
+  return response.data.data;
+};
+
+export const updateFulfillmentTracking = async (fulfillmentId, data) => {
+  const response = await api.patch(`/orders/admin/fulfillments/${fulfillmentId}/tracking`, data);
+  return response.data.data;
+};
+
+// ============ MARKALAR ============
+export const getBrands = async () => (await api.get('/brands/admin/all')).data.data;
+export const getBrand = async (id) => (await api.get(`/brands/admin/${id}`)).data.data;
+export const createBrand = async (data) => (await api.post('/brands/admin', data)).data.data;
+export const updateBrand = async (id, data) => (await api.patch(`/brands/admin/${id}`, data)).data.data;
+export const getBrandMembers = async (id) => (await api.get(`/brands/admin/${id}/members`)).data.data;
+export const createBrandMember = async (id, data) => (await api.post(`/brands/admin/${id}/members`, data)).data.data;
+export const updateBrandMember = async (id, userId, data) => (await api.patch(`/brands/admin/${id}/members/${userId}`, data)).data.data;
+export const removeBrandMember = async (id, userId) => (await api.delete(`/brands/admin/${id}/members/${userId}`)).data;
+export const resetBrandMemberPassword = async (id, userId, password) => (await api.post(`/brands/admin/${id}/members/${userId}/reset-password`, { password })).data;
+
+// ============ ÜRÜN ONAYLARI ============
+export const getProductApprovals = async (params = {}) => (await api.get('/products/admin/approvals', { params })).data.data;
+export const approveProductDraft = async (id) => (await api.post(`/products/admin/${id}/approve`)).data.data;
+export const rejectProductDraft = async (id, reason) => (await api.post(`/products/admin/${id}/reject`, { reason })).data.data;
+
 // ============ ÜRÜNLER ============
 export const getAdminProducts = async (params = {}) => {
   const response = await api.get('/products/admin/all', { params });

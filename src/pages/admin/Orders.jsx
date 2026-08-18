@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronRight, MapPin, Mail, Phone, User,
   Search, Filter, Send, X, AlertCircle, Loader2,
 } from 'lucide-react';
-import { getAdminOrders, getAdminOrderDetail, updateOrderStatus, addOrderTracking } from '../../api/admin';
+import { getAdminOrders, getAdminOrderDetail, updateOrderStatus, addOrderTracking, updateFulfillmentStatus, updateFulfillmentTracking } from '../../api/admin';
 
 const STATUS_MAP = {
   pending:    { label: 'Onay Bekliyor', color: 'text-amber-700 bg-amber-50 border-amber-200', icon: Clock },
@@ -299,6 +299,8 @@ const OrderDetail = ({ orderId, currentStatus }) => {
         </div>
       </div>
 
+      {detail.fulfillments?.length > 0 && <div><h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#8B5A2B]/70">Marka gönderileri</h4><div className="grid gap-3 lg:grid-cols-2">{detail.fulfillments.map((fulfillment) => <FulfillmentAdminCard key={fulfillment.id} fulfillment={fulfillment} orderId={orderId} />)}</div></div>}
+
       {/* Actions */}
       <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-[#E8D5C4]/50">
         {/* Durum güncelle */}
@@ -377,6 +379,18 @@ const OrderDetail = ({ orderId, currentStatus }) => {
       </div>
     </div>
   );
+};
+
+const fulfillmentLabels = { pending_payment: 'Ödeme bekliyor', paid: 'Ödendi', preparing: 'Hazırlanıyor', ready_to_ship: 'Gönderime hazır', shipped: 'Kargoda', delivered: 'Teslim edildi', cancelled: 'İptal', refunded: 'İade' };
+const fulfillmentNext = { paid: 'preparing', preparing: 'ready_to_ship', shipped: 'delivered' };
+
+const FulfillmentAdminCard = ({ fulfillment, orderId }) => {
+  const queryClient = useQueryClient(); const [company, setCompany] = useState(''); const [tracking, setTracking] = useState('');
+  const refresh = () => { queryClient.invalidateQueries({ queryKey: ['adminOrders'] }); queryClient.invalidateQueries({ queryKey: ['adminOrderDetail', orderId] }); };
+  const statusMutation = useMutation({ mutationFn: (status) => updateFulfillmentStatus(fulfillment.id, status), onSuccess: refresh });
+  const trackingMutation = useMutation({ mutationFn: () => updateFulfillmentTracking(fulfillment.id, { cargo_company: company, tracking_number: tracking }), onSuccess: refresh });
+  const nextStatus = fulfillmentNext[fulfillment.status];
+  return <div className="rounded-xl border border-[#E8D5C4] bg-white p-3 text-sm"><div className="flex items-center justify-between"><span className="font-semibold text-[#3D2914]">{fulfillment.brand_name}</span><span className="text-xs text-[#8B5A2B]">{fulfillmentLabels[fulfillment.status] || fulfillment.status}</span></div><div className="mt-2 grid grid-cols-2 gap-2 text-xs text-[#8B5A2B]"><span>Ürün: {Number(fulfillment.items_subtotal).toLocaleString('tr-TR')}₺</span><span>Kargo: {Number(fulfillment.shipping_fee).toLocaleString('tr-TR')}₺</span></div>{fulfillment.cargo_company && <p className="mt-2 text-xs text-[#8B5A2B]">{fulfillment.cargo_company} · <span className="font-mono">{fulfillment.tracking_number}</span></p>}<div className="mt-3 flex flex-wrap gap-2">{nextStatus && <button onClick={() => statusMutation.mutate(nextStatus)} className="rounded-lg bg-[#3D2914] px-3 py-1.5 text-xs font-medium text-white">{fulfillmentLabels[nextStatus]}</button>}{fulfillment.status === 'ready_to_ship' && <><input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Kargo firması" className="min-w-28 flex-1 rounded-lg border border-[#E8D5C4] px-2 py-1.5 text-xs" /><input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Takip numarası" className="min-w-28 flex-1 rounded-lg border border-[#E8D5C4] px-2 py-1.5 text-xs" /><button disabled={!company || !tracking} onClick={() => trackingMutation.mutate()} className="rounded-lg bg-[#C67D4A] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40">Kargoya ver</button></>}</div></div>;
 };
 
 export default Orders;

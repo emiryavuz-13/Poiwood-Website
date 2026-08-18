@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { Heart, ShoppingCart, Star } from 'lucide-react';
 import { useFavorites } from '../hooks/useFavorites';
 import { useCart } from '../hooks/useCart';
-import { triggerCartToast, triggerFavoriteToast } from './Toast';
+import { triggerCartToast, triggerFavoriteToast } from '../utils/toast';
 
 const ProductCard = ({ product }) => {
   const {

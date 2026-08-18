@@ -23,6 +23,16 @@ export const useCart = () => {
     : guestItems.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const isLoading = isAuthenticated ? serverLoading : false;
+  const guestBrandGroups = Object.values(guestItems.reduce((groups, item) => {
+    const key = item.brand_id || 'panelistan';
+    if (!groups[key]) groups[key] = { brand_id: item.brand_id, brand_name: item.brand_name || 'Panelistan', items_subtotal: 0, item_count: 0, configured_shipping_fee: Number(item.brand_shipping_fee || 0), free_shipping_threshold: item.free_shipping_threshold == null ? null : Number(item.free_shipping_threshold) };
+    groups[key].items_subtotal += Number(item.unit_price) * item.quantity;
+    groups[key].item_count += 1;
+    return groups;
+  }, {})).map((group) => ({ ...group, shipping_fee: group.free_shipping_threshold != null && group.items_subtotal >= group.free_shipping_threshold ? 0 : group.configured_shipping_fee }));
+  const brandGroups = isAuthenticated ? (serverCart?.brand_groups || []) : guestBrandGroups;
+  const shippingFee = isAuthenticated ? Number(serverCart?.shipping_fee || 0) : brandGroups.reduce((sum, group) => sum + group.shipping_fee, 0);
+  const total = subtotal + shippingFee;
 
   // --- Add to cart ---
   const addMutation = useMutation({
@@ -86,6 +96,9 @@ export const useCart = () => {
   return {
     items,
     subtotal,
+    brandGroups,
+    shippingFee,
+    total,
     itemCount,
     isLoading,
     addItem,

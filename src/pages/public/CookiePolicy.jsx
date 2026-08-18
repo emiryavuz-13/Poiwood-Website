@@ -42,7 +42,7 @@ Yaygın tarayıcılarda çerez ayarları:
     title: 'Politika Güncellemeleri',
     content: `Bu çerez politikası en son 1 Mart 2026 tarihinde güncellenmiştir. Değişiklik yapılması halinde güncel politika bu sayfada yayımlanacaktır.
 
-Sorularınız için info@poiwood.com adresinden bize ulaşabilirsiniz.`,
+Sorularınız için info@panelistan.com adresinden bize ulaşabilirsiniz.`,
   },
 ];
 

@@ -54,7 +54,7 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Poiwood özel renk skalası
+        // Panelistan özel renk skalası
         walnut: "#3D2914",
         coffee: "#8B5A2B",
         "golden-oak": "#D4A574",

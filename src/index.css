@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    /* Poiwood — Warm Wood Palette (İlham: D:\Poiwood-WebSite) */
+    /* Panelistan — Warm Wood Palette */
     --background: 36 63% 96%;       /* Krem beyaz #FAF6F0 */
     --foreground: 31 51% 16%;       /* Koyu ceviz #3D2914 */
 
@@ -35,7 +35,7 @@
 
     --radius: 0.5rem;
 
-    /* Ek Poiwood renkleri */
+    /* Ek Panelistan renkleri */
     --color-dark-walnut: #3D2914;
     --color-warm-coffee: #8B5A2B;
     --color-golden-oak: #D4A574;
@@ -180,6 +180,15 @@
 }
 .animate-slide-out-bottom {
   animation: slideOutBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-out,
+  .animate-slide-in-bottom,
+  .animate-slide-out-bottom {
+    animation: none;
+  }
 }
 
 /* Scrollbar */

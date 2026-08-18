@@ -8,6 +8,7 @@ import { setEmailVerified } from '../store/slices/authSlice';
 import { auth as firebaseAuth } from '../lib/firebase';
 import { useCart } from '../hooks/useCart';
 import { Button } from '../components/ui/button';
+import Logo from '../components/Logo';
 
 const PublicLayout = () => {
   const { isAuthenticated, user, emailVerified } = useSelector((state) => state.auth);
@@ -95,8 +96,8 @@ const PublicLayout = () => {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
           <div className="flex items-center h-16 gap-8">
             {/* Logo */}
-            <Link to="/" className="text-[1.75rem] font-heading font-bold hover:opacity-80 transition-opacity shrink-0" style={{ color: '#3D2914' }}>
-              Poi<span style={{ color: '#C67D4A' }}>wood</span>
+            <Link to="/" className="hover:opacity-80 transition-opacity shrink-0" aria-label="Panelistan ana sayfa">
+              <Logo showWordmark markClassName="w-10 h-10" />
             </Link>
 
             {/* Desktop Nav */}
@@ -149,7 +150,7 @@ const PublicLayout = () => {
               </Link>
 
               {/* Admin */}
-              {isAuthenticated && user?.role === 'admin' && (
+              {isAuthenticated && user?.role === 'platform_admin' && (
                 <Link to="/admin" className="hidden sm:flex w-10 h-10 rounded-full items-center justify-center text-[#3D2914] hover:bg-amber-100 hover:text-amber-600 transition-colors" title="Admin Paneli">
                   <ShieldAlert className="w-5 h-5" />
                 </Link>
@@ -217,7 +218,7 @@ const PublicLayout = () => {
               ))}
               {isAuthenticated ? (
                 <div className="flex flex-col gap-2 pt-4">
-                  {user?.role === 'admin' && (
+                  {user?.role === 'platform_admin' && (
                     <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)}>
                       <Button variant="outline" className="w-full rounded-full gap-2">
                         <ShieldAlert className="w-4 h-4" /> Admin Paneli
@@ -338,9 +339,13 @@ const PublicLayout = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
             {/* Brand */}
             <div className="lg:col-span-2">
-              <div className="text-3xl font-heading font-bold mb-4">
-                Poi<span className="text-[#C67D4A]">wood</span>
-              </div>
+              <Logo
+                variant="light"
+                showWordmark
+                className="mb-4"
+                markClassName="w-11 h-11"
+                wordmarkClassName="text-3xl"
+              />
               <p className="text-white/70 mb-6 max-w-[280px] leading-relaxed">
                 El yapımı, doğal ahşap dekor ürünleri ile yaşam alanlarınıza sıcaklık katıyoruz.
               </p>
@@ -348,8 +353,8 @@ const PublicLayout = () => {
                 <a href="tel:+902121234567" className="flex items-center gap-3 text-white/70 text-sm hover:text-white transition-colors">
                   <Phone className="w-4 h-4" /> +90 212 123 45 67
                 </a>
-                <a href="mailto:info@poiwood.com" className="flex items-center gap-3 text-white/70 text-sm hover:text-white transition-colors">
-                  <Mail className="w-4 h-4" /> info@poiwood.com
+                <a href="mailto:info@panelistan.com" className="flex items-center gap-3 text-white/70 text-sm hover:text-white transition-colors">
+                  <Mail className="w-4 h-4" /> info@panelistan.com
                 </a>
                 <span className="flex items-center gap-3 text-white/70 text-sm">
                   <MapPin className="w-4 h-4" /> Kadıköy, İstanbul
@@ -408,7 +413,7 @@ const PublicLayout = () => {
         {/* Bottom */}
         <div className="border-t border-white/10">
           <div className="max-w-[1400px] mx-auto px-6 py-5 flex flex-wrap justify-between items-center gap-4 text-sm text-white/60">
-            <p>&copy; 2026 Poiwood. Tüm hakları saklıdır.</p>
+            <p>&copy; 2026 Panelistan. Tüm hakları saklıdır.</p>
             <div className="flex gap-6">
               <Link to="/privacy-policy" className="hover:text-white transition-colors">Gizlilik</Link>
               <Link to="/terms" className="hover:text-white transition-colors">Şartlar</Link>

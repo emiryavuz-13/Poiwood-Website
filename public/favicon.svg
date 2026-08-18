@@ -1,8 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <!-- Background circle -->
-  <rect width="32" height="32" rx="8" fill="#3D2914"/>
-  <!-- Letter P -->
-  <text x="5" y="24" font-family="Georgia, serif" font-weight="700" font-size="22" fill="#FFFFFF">P</text>
-  <!-- Accent dot (wood color) -->
-  <circle cx="24" cy="10" r="4" fill="#C67D4A"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Panelistan">
+  <defs>
+    <!-- Çıtalar çerçevenin içinde kalsın diye daraltılmış yıldız -->
+    <clipPath id="pnl-fav-inner">
+      <rect x="14" y="14" width="36" height="36" rx="2" />
+      <rect x="14" y="14" width="36" height="36" rx="2" transform="rotate(45 32 32)" />
+    </clipPath>
+  </defs>
+
+  <!-- Dolu yıldız gövde: küçük boyutta okunurluk için çerçeve yerine masif zemin -->
+  <g fill="#3D2914">
+    <rect x="10" y="10" width="44" height="44" rx="3" />
+    <rect x="10" y="10" width="44" height="44" rx="3" transform="rotate(45 32 32)" />
+  </g>
+
+  <g clip-path="url(#pnl-fav-inner)">
+    <g transform="rotate(45 32 32)">
+      <rect x="-2" y="12.5" width="39.2" height="13" fill="#D4A574" />
+      <rect x="-2" y="12.5" width="39.2" height="13" fill="#C67D4A" transform="rotate(90 32 32)" />
+      <rect x="-2" y="12.5" width="39.2" height="13" fill="#D4A574" transform="rotate(180 32 32)" />
+      <rect x="-2" y="12.5" width="39.2" height="13" fill="#C67D4A" transform="rotate(270 32 32)" />
+    </g>
+  </g>
 </svg>

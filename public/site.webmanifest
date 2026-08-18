@@ -1,0 +1,16 @@
+{
+  "name": "Panelistan — Doğal Ahşap Tasarım",
+  "short_name": "Panelistan",
+  "description": "El yapımı, doğal ahşap dekor ürünleri ile yaşam alanlarınıza sıcaklık katıyoruz.",
+  "lang": "tr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF6F0",
+  "theme_color": "#3D2914",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

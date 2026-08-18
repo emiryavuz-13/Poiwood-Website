@@ -1,44 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, ShoppingBag, Heart, X, ChevronRight, Undo2 } from 'lucide-react';
-
-let showToastGlobal = null;
-
-/**
- * type: 'cart' | 'favorite-add' | 'favorite-remove'
- * product: { name, primary_image, displayPrice? }
- * onUndo: optional callback for undo action
- */
-export const triggerToast = (type, product, onUndo) => {
-  if (showToastGlobal) showToastGlobal({ type, product, onUndo });
-};
-
-// Kısa yollar
-export const triggerCartToast = (product) => triggerToast('cart', product);
-export const triggerFavoriteToast = (product, added = true, onUndo) =>
-  triggerToast(added ? 'favorite-add' : 'favorite-remove', product, onUndo);
+import { AlertCircle, CheckCircle2, ShoppingBag, Heart, X, ChevronRight, Undo2, Clock3 } from 'lucide-react';
+import { setToastHandler } from '../utils/toast';
 
 const CONFIGS = {
-  cart: {
-    icon: CheckCircle2,
-    iconColor: 'text-[#4A5D23]',
-    title: 'Sepete Eklendi',
-    actionLabel: 'Sepete Git',
-    actionLink: '/cart',
-  },
-  'favorite-add': {
-    icon: Heart,
-    iconColor: 'text-red-500',
-    title: 'Favorilere Eklendi',
-    actionLabel: 'Favorilere Git',
-    actionLink: '/favorites',
-  },
-  'favorite-remove': {
-    icon: Heart,
-    iconColor: 'text-[#8B5A2B]',
-    title: 'Favorilerden Çıkarıldı',
-  },
+  cart: { icon: CheckCircle2, iconColor: 'text-olive', title: 'Sepete Eklendi', actionLabel: 'Sepete Git', actionLink: '/cart' },
+  'favorite-add': { icon: Heart, iconColor: 'text-red-500', title: 'Favorilere Eklendi', actionLabel: 'Favorilere Git', actionLink: '/favorites' },
+  'favorite-remove': { icon: Heart, iconColor: 'text-coffee', title: 'Favorilerden Çıkarıldı' },
+  'action-success': { icon: CheckCircle2, iconColor: 'text-olive', iconBackground: 'bg-olive/10' },
+  'action-pending': { icon: Clock3, iconColor: 'text-terracotta', iconBackground: 'bg-terracotta/10' },
+  'action-error': { icon: AlertCircle, iconColor: 'text-red-600', iconBackground: 'bg-red-50' },
 };
 
 const Toast = () => {
@@ -48,7 +20,7 @@ const Toast = () => {
 
   const close = useCallback(() => {
     setClosing(true);
-    setTimeout(() => {
+    window.setTimeout(() => {
       setVisible(false);
       setClosing(false);
       setData(null);
@@ -56,20 +28,20 @@ const Toast = () => {
   }, []);
 
   useEffect(() => {
-    showToastGlobal = (d) => {
-      setData(d);
+    setToastHandler((nextData) => {
+      setData(nextData);
       setClosing(false);
       setVisible(true);
-    };
-    return () => { showToastGlobal = null; };
+    });
+    return () => setToastHandler(null);
   }, []);
 
-  // Otomatik kapanma
   useEffect(() => {
-    if (!visible || closing) return;
-    const duration = data?.type === 'cart' ? 4000 : 3000;
-    const timer = setTimeout(close, duration);
-    return () => clearTimeout(timer);
+    if (!visible || closing) return undefined;
+    const isAction = data?.type?.startsWith('action-');
+    const duration = isAction ? 6500 : data?.type === 'cart' ? 4000 : 3000;
+    const timer = window.setTimeout(close, duration);
+    return () => window.clearTimeout(timer);
   }, [visible, closing, close, data]);
 
   if (!visible || !data) return null;
@@ -80,6 +52,8 @@ const Toast = () => {
   const image = product?.primary_thumbnail || product?.primary_image || product?.images?.[0]?.firebase_url || null;
   const isCart = data.type === 'cart';
   const isFavRemove = data.type === 'favorite-remove';
+  const isAction = data.type.startsWith('action-');
+  const isError = data.type === 'action-error';
 
   const handleUndo = () => {
     if (data.onUndo) data.onUndo();
@@ -88,104 +62,70 @@ const Toast = () => {
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] pointer-events-none">
-      {/* Backdrop — sadece mobilde, sadece cart */}
-      {isCart && (
-        <div
-          className={`absolute inset-0 bg-black/20 pointer-events-auto sm:hidden ${closing ? 'animate-fade-out' : 'animate-fade-in'}`}
-          onClick={close}
-        />
-      )}
+      {isCart && <div className={`absolute inset-0 bg-black/20 pointer-events-auto sm:hidden ${closing ? 'animate-fade-out' : 'animate-fade-in'}`} onClick={close} />}
 
-      {/* Toast panel */}
       <div
-        className={`absolute pointer-events-auto
-          ${isCart
-            ? 'bottom-0 left-0 right-0 sm:bottom-auto sm:left-auto sm:top-20 sm:right-4 md:right-6 lg:right-8 sm:w-[380px] sm:rounded-2xl rounded-t-2xl'
-            : 'top-20 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-4 md:right-6 lg:right-8 w-[calc(100%-2rem)] sm:w-[360px] rounded-2xl'
-          }
-          bg-white shadow-2xl shadow-black/15
-          ${closing
-            ? (isCart ? 'animate-slide-out-bottom sm:animate-fade-out' : 'animate-fade-out')
-            : (isCart ? 'animate-slide-in-bottom sm:animate-fade-in' : 'animate-fade-in')
-          }`}
+        role={isError ? 'alert' : 'status'}
+        aria-live={isError ? 'assertive' : 'polite'}
+        className={`absolute pointer-events-auto bg-white shadow-2xl shadow-walnut/15
+          ${isAction
+            ? 'left-4 right-4 top-4 mx-auto max-w-md rounded-xl border border-light-wood/70 sm:left-auto sm:right-5 sm:mx-0'
+            : isCart
+              ? 'bottom-0 left-0 right-0 rounded-t-2xl sm:bottom-auto sm:left-auto sm:right-4 sm:top-20 sm:w-[380px] sm:rounded-2xl md:right-6 lg:right-8'
+              : 'left-1/2 top-20 w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl sm:left-auto sm:right-4 sm:w-[360px] sm:translate-x-0 md:right-6 lg:right-8'}
+          ${closing ? (isCart ? 'animate-slide-out-bottom sm:animate-fade-out' : 'animate-fade-out') : (isCart ? 'animate-slide-in-bottom sm:animate-fade-in' : 'animate-fade-in')}`}
       >
-        {/* Drag handle — mobilde, sadece cart */}
-        {isCart && (
-          <div className="flex justify-center pt-2 pb-0 sm:hidden">
-            <div className="w-10 h-1 rounded-full bg-[#E8D5C4]" />
+        {isAction ? (
+          <div className="flex items-start gap-3 p-4">
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.iconBackground} ${config.iconColor}`}>
+              <Icon className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <p className="text-sm font-semibold text-walnut">{data.title}</p>
+              {data.message && <p className="mt-1 text-sm leading-5 text-coffee">{data.message}</p>}
+            </div>
+            <button type="button" onClick={close} aria-label="Bildirimi kapat" className="rounded-lg p-1.5 text-coffee/70 transition-colors hover:bg-cream hover:text-walnut focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
           </div>
-        )}
+        ) : (
+          <>
+            {isCart && <div className="flex justify-center pb-0 pt-2 sm:hidden"><div className="h-1 w-10 rounded-full bg-light-wood" /></div>}
+            <div className="flex items-center justify-between px-4 pb-2 pt-3 sm:px-5 sm:pt-4">
+              <div className={`flex items-center gap-2 ${config.iconColor}`}>
+                <Icon className="h-5 w-5" fill={data.type === 'favorite-add' ? 'currentColor' : 'none'} />
+                <span className="text-sm font-semibold">{config.title}</span>
+              </div>
+              <button onClick={close} aria-label="Bildirimi kapat" className="flex h-7 w-7 items-center justify-center rounded-full text-coffee/40 transition-colors hover:bg-light-wood/40 hover:text-walnut"><X className="h-4 w-4" /></button>
+            </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-5 pt-3 sm:pt-4 pb-2">
-          <div className={`flex items-center gap-2 ${config.iconColor}`}>
-            <Icon className="w-5 h-5" fill={data.type === 'favorite-add' ? 'currentColor' : 'none'} />
-            <span className="text-sm font-semibold">{config.title}</span>
-          </div>
-          <button
-            onClick={close}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[#8B5A2B]/40 hover:text-[#3D2914] hover:bg-[#E8D5C4]/40 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Product */}
-        {product && (
-          <div className="px-4 sm:px-5 pb-3 flex gap-3 items-center">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-[#FAF6F0] shrink-0">
-              {image ? (
-                <img src={image} alt={product.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <ShoppingBag className="w-6 h-6 text-[#E8D5C4]" />
+            {product && (
+              <div className="flex items-center gap-3 px-4 pb-3 sm:px-5">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-cream sm:h-16 sm:w-16">
+                  {image ? <img src={image} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><ShoppingBag className="h-6 w-6 text-light-wood" /></div>}
                 </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-[#3D2914] line-clamp-2 leading-snug">{product.name}</p>
-              {product.displayPrice && (
-                <p className="text-sm font-bold text-[#C67D4A] mt-0.5">{product.displayPrice}</p>
-              )}
-            </div>
-          </div>
-        )}
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 text-sm font-medium leading-snug text-walnut">{product.name}</p>
+                  {product.displayPrice && <p className="mt-0.5 text-sm font-bold text-terracotta">{product.displayPrice}</p>}
+                </div>
+              </div>
+            )}
 
-        {/* Actions */}
-        <div className="px-4 sm:px-5 pb-4 sm:pb-5 flex gap-2.5">
-          {isFavRemove ? (
-            <>
-              <button
-                onClick={close}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8D5C4] text-[#3D2914] text-sm font-medium hover:bg-[#E8D5C4]/20 transition-colors"
-              >
-                Tamam
-              </button>
-              <button
-                onClick={handleUndo}
-                className="flex-1 py-2.5 rounded-xl bg-[#C67D4A] text-white text-sm font-semibold hover:bg-[#C67D4A]/90 transition-colors flex items-center justify-center gap-1.5"
-              >
-                <Undo2 className="w-4 h-4" /> Geri Al
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={close}
-                className="flex-1 py-2.5 rounded-xl border border-[#E8D5C4] text-[#3D2914] text-sm font-medium hover:bg-[#E8D5C4]/20 transition-colors"
-              >
-                Alışverişe Devam Et
-              </button>
-              <Link
-                to={config.actionLink}
-                onClick={close}
-                className="flex-1 py-2.5 rounded-xl bg-[#C67D4A] text-white text-sm font-semibold hover:bg-[#C67D4A]/90 transition-colors flex items-center justify-center gap-1.5"
-              >
-                {config.actionLabel} <ChevronRight className="w-4 h-4" />
-              </Link>
-            </>
-          )}
-        </div>
+            <div className="flex gap-2.5 px-4 pb-4 sm:px-5 sm:pb-5">
+              {isFavRemove ? (
+                <>
+                  <button onClick={close} className="flex-1 rounded-xl border border-light-wood py-2.5 text-sm font-medium text-walnut transition-colors hover:bg-light-wood/20">Tamam</button>
+                  <button onClick={handleUndo} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-terracotta py-2.5 text-sm font-semibold text-white transition-colors hover:bg-terracotta/90"><Undo2 className="h-4 w-4" /> Geri Al</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={close} className="flex-1 rounded-xl border border-light-wood py-2.5 text-sm font-medium text-walnut transition-colors hover:bg-light-wood/20">Alışverişe Devam Et</button>
+                  <Link to={config.actionLink} onClick={close} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-terracotta py-2.5 text-sm font-semibold text-white transition-colors hover:bg-terracotta/90">{config.actionLabel} <ChevronRight className="h-4 w-4" /></Link>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>,
     document.body

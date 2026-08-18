@@ -71,16 +71,41 @@ describe('cartSlice', () => {
 
   test('her işlemden sonra localStorage güncellenir', () => {
     cartReducer(undefined, addGuestItem({ product: makeProduct(), quantity: 1 }));
-    const stored = JSON.parse(localStorage.getItem('poiwood_guest_cart'));
+    const stored = JSON.parse(localStorage.getItem('panelistan_guest_cart'));
     expect(stored).toHaveLength(1);
   });
 
   test('bozuk localStorage içeriğinde çökmeden boş sepetle başlar', async () => {
-    localStorage.setItem('poiwood_guest_cart', 'not-json{{{');
+    localStorage.setItem('panelistan_guest_cart', 'not-json{{{');
     vi.resetModules();
     const mod = await import('./cartSlice');
     const state = mod.default(undefined, { type: '@@INIT' });
     expect(state.items).toEqual([]);
+  });
+
+  // Marka geçişi: eski anahtardaki sepet kaybolmamalı.
+  test('eski poiwood anahtarındaki sepet yeni anahtara taşınır', async () => {
+    const legacyCart = [{ id: 'g1', product_id: 1, quantity: 2, name: 'Eski ürün' }];
+    localStorage.setItem('poiwood_guest_cart', JSON.stringify(legacyCart));
+
+    vi.resetModules();
+    const mod = await import('./cartSlice');
+    const state = mod.default(undefined, { type: '@@INIT' });
+
+    expect(state.items).toEqual(legacyCart);
+    expect(JSON.parse(localStorage.getItem('panelistan_guest_cart'))).toEqual(legacyCart);
+    expect(localStorage.getItem('poiwood_guest_cart')).toBeNull();
+  });
+
+  test('yeni anahtar doluyken eski anahtar yok sayılır', async () => {
+    localStorage.setItem('poiwood_guest_cart', JSON.stringify([{ id: 'eski' }]));
+    localStorage.setItem('panelistan_guest_cart', JSON.stringify([{ id: 'yeni' }]));
+
+    vi.resetModules();
+    const mod = await import('./cartSlice');
+    const state = mod.default(undefined, { type: '@@INIT' });
+
+    expect(state.items).toEqual([{ id: 'yeni' }]);
   });
 
   describe('varyantlı ürünler', () => {

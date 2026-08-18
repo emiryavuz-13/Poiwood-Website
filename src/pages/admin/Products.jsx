@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit3, Trash2, Save, Loader2, Package, Image as ImageIcon,
-  Star, Upload, Crown, Search, ChevronLeft,
+  Star, Upload, Crown, Search, ChevronLeft, Undo2, Send,
 } from 'lucide-react';
 import { getAllCategories } from '../../api/categories';
 import { createProduct } from '../../api/products';
@@ -13,6 +13,13 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import { optimizeImage } from '../../utils/imageOptimizer';
+import { triggerActionToast } from '../../utils/toast';
+import {
+  addBrandProductImage, createBrandProduct, getBrandProduct, getBrandProducts,
+  removeBrandProductImage, requestBrandProductDeletion, saveBrandProductDraft,
+  saveBrandProductVariants, setBrandProductPrimaryImage, submitBrandProduct,
+  withdrawBrandProductApproval,
+} from '../../api/brand';
 
 const toSlug = (str) =>
   str.toLowerCase()
@@ -28,7 +35,34 @@ const emptyForm = {
   discount_type: '', discount_value: '',
 };
 
-export default function Products() {
+const uploadProductFiles = async (files, productSlug) => {
+  const uploaded = [];
+  for (let index = 0; index < files.length; index += 1) {
+    const file = files[index].file || files[index];
+    const timestamp = Date.now();
+    const [full, thumb] = await Promise.all([
+      optimizeImage(file, { maxSize: 1600, quality: 0.82 }),
+      optimizeImage(file, { maxSize: 800, quality: 0.82 }),
+    ]);
+    const fullPath = `products/${productSlug}/${timestamp}_${index}.webp`;
+    const thumbPath = `products/${productSlug}/thumb_${timestamp}_${index}.webp`;
+    const fullRef = ref(storage, fullPath);
+    const thumbRef = ref(storage, thumbPath);
+    await uploadBytes(fullRef, full.blob, { contentType: 'image/webp' });
+    await uploadBytes(thumbRef, thumb.blob, { contentType: 'image/webp' });
+    uploaded.push({
+      firebase_url: await getDownloadURL(fullRef),
+      thumbnail_url: await getDownloadURL(thumbRef),
+      storage_path: fullPath,
+      display_order: index,
+      is_primary: index === 0,
+    });
+  }
+  return uploaded;
+};
+
+export default function Products({ mode = 'admin', brandId = '' }) {
+  const isBrand = mode === 'brand';
   const queryClient = useQueryClient();
   const [view, setView] = useState('list'); // list | create | edit
   const [editingId, setEditingId] = useState(null);
@@ -37,18 +71,25 @@ export default function Products() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStock, setFilterStock] = useState('');
   const [page, setPage] = useState(1);
+  const [createFiles, setCreateFiles] = useState([]);
+  const [createImageError, setCreateImageError] = useState('');
+  const [saveAllError, setSaveAllError] = useState('');
+  const [savingAll, setSavingAll] = useState(false);
+  const variantSaveRef = useRef(null);
 
   // Data
   const { data: categoriesRaw = [] } = useQuery({ queryKey: ['categories'], queryFn: getAllCategories });
   const { data, isLoading } = useQuery({
-    queryKey: ['adminProducts', searchQuery, filterCategory, filterStock, page],
-    queryFn: () => getAdminProducts({
+    queryKey: [isBrand ? 'brandProducts' : 'adminProducts', brandId, searchQuery, filterCategory, filterStock, page],
+    queryFn: () => (isBrand ? getBrandProducts : getAdminProducts)({
+      brand_id: isBrand ? brandId : undefined,
       search: searchQuery || undefined,
       category_id: filterCategory || undefined,
       stock: filterStock || undefined,
       page,
       limit: 15,
     }),
+    enabled: !isBrand || Boolean(brandId),
   });
 
   const products = data?.products || [];
@@ -66,18 +107,26 @@ export default function Products() {
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: createProduct,
+    mutationFn: async (payload) => {
+      const images = await uploadProductFiles(createFiles, payload.slug);
+      const dataWithImages = { ...payload, images };
+      return isBrand
+        ? createBrandProduct({ ...dataWithImages, brand_id: brandId })
+        : createProduct(dataWithImages);
+    },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
       // Switch to edit mode to add images
-      const product = res.data;
+      const product = isBrand ? res : res.data;
       setEditingId(product.id);
       setView('edit');
+      setCreateFiles([]);
+      setCreateImageError('');
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => updateProduct(id, data),
+    mutationFn: ({ id, data }) => isBrand ? saveBrandProductDraft(id, data) : updateProduct(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
       queryClient.invalidateQueries({ queryKey: ['adminProductDetail', editingId] });
@@ -85,12 +134,75 @@ export default function Products() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteProduct,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['adminProducts'] }),
+    mutationFn: ({ id }) => isBrand ? requestBrandProductDeletion(id) : deleteProduct(id),
+    onSuccess: async (_result, product) => {
+      await queryClient.invalidateQueries({ queryKey: [isBrand ? 'brandProducts' : 'adminProducts'] });
+      triggerActionToast(isBrand ? {
+        type: 'pending',
+        title: 'Silme talebi alındı',
+        message: `“${product.name}” için talebiniz Panelistan yönetici onayına gönderildi. Ürün, onay verilene kadar yayında kalır.`,
+      } : {
+        type: 'success',
+        title: 'Ürün silindi',
+        message: `“${product.name}” başarıyla silindi.`,
+      });
+    },
+    onError: (error) => triggerActionToast({
+      type: 'error',
+      title: 'Silme talebi gönderilemedi',
+      message: error?.response?.data?.message || 'Lütfen tekrar deneyin.',
+    }),
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: ({ id }) => withdrawBrandProductApproval(id),
+    onSuccess: async (result, product) => {
+      await queryClient.invalidateQueries({ queryKey: ['brandProducts', brandId] });
+      const messages = {
+        create: 'Ürün yeniden taslak durumuna alındı. Düzenleyip tekrar onaya gönderebilirsiniz.',
+        update: 'Güncelleme taslağı korundu. Düzenlemeye devam edebilirsiniz.',
+        delete: 'Silme talebi iptal edildi. Ürün yayında kalmaya devam edecek.',
+      };
+      triggerActionToast({
+        type: 'success',
+        title: 'Onay talebi geri çekildi',
+        message: `“${product.name}” için ${messages[result.type]}`,
+      });
+    },
+    onError: (error) => triggerActionToast({
+      type: 'error',
+      title: 'Talep geri çekilemedi',
+      message: error?.response?.data?.message || 'Lütfen tekrar deneyin.',
+    }),
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: submitBrandProduct,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['brandProducts', brandId] });
+      queryClient.invalidateQueries({ queryKey: ['brandProductDetail', editingId] });
+      triggerActionToast({
+        type: 'pending',
+        title: 'Ürün onaya gönderildi',
+        message: 'Talebiniz Panelistan yöneticisinin incelemesini bekliyor. Ürün listesinden geri çekebilirsiniz.',
+      });
+      setView('list');
+      setEditingId(null);
+    },
+    onError: (error) => triggerActionToast({
+      type: 'error',
+      title: 'Ürün onaya gönderilemedi',
+      message: error?.response?.data?.message || 'Lütfen tekrar deneyin.',
+    }),
   });
 
 
   const handleSubmitCreate = () => {
+    if (createFiles.length === 0) {
+      setCreateImageError('Ürün oluşturmak için en az bir fotoğraf seçmelisiniz.');
+      return;
+    }
+    setCreateImageError('');
     const data = {
       name: form.name,
       slug: form.slug || toSlug(form.name),
@@ -121,7 +233,7 @@ export default function Products() {
     createMutation.mutate(data);
   };
 
-  const handleSubmitEdit = () => {
+  const handleSubmitEdit = async () => {
     const data = {
       name: form.name,
       slug: form.slug,
@@ -148,7 +260,17 @@ export default function Products() {
     // İndirim — her zaman gönder
     data.discount_type = form.discount_type || null;
     data.discount_value = form.discount_value ? parseFloat(form.discount_value) : null;
-    updateMutation.mutate({ id: editingId, data });
+    try {
+      setSavingAll(true);
+      setSaveAllError('');
+      await updateMutation.mutateAsync({ id: editingId, data });
+      if (form.pricing_type === 'fixed' && variantSaveRef.current) await variantSaveRef.current();
+      if (isBrand) await submitMutation.mutateAsync(editingId);
+    } catch (error) {
+      setSaveAllError(error?.response?.data?.message || error?.message || 'Ürün kaydedilemedi.');
+    } finally {
+      setSavingAll(false);
+    }
   };
 
   const startEdit = (product) => {
@@ -176,8 +298,20 @@ export default function Products() {
   };
 
   const handleDelete = (id, name) => {
-    if (window.confirm(`"${name}" ürününü silmek istediğinize emin misiniz?`)) {
-      deleteMutation.mutate(id);
+    const message = isBrand
+      ? `"${name}" ürünü için silme talebi göndermek istediğinize emin misiniz?`
+      : `"${name}" ürününü silmek istediğinize emin misiniz?`;
+    if (window.confirm(message)) {
+      deleteMutation.mutate({ id, name });
+    }
+  };
+
+  const handleWithdrawApproval = (product) => {
+    const requestType = product.draft_action === 'delete'
+      ? 'silme'
+      : product.approval_status === 'pending_approval' ? 'ürün ekleme' : 'güncelleme';
+    if (window.confirm(`“${product.name}” için bekleyen ${requestType} onayını geri çekmek istediğinize emin misiniz?`)) {
+      withdrawMutation.mutate({ id: product.id, name: product.name });
     }
   };
 
@@ -185,6 +319,9 @@ export default function Products() {
     setView('list');
     setEditingId(null);
     setForm(emptyForm);
+    setCreateFiles([]);
+    setCreateImageError('');
+    setSaveAllError('');
   };
 
   // =============== LIST VIEW ===============
@@ -199,7 +336,7 @@ export default function Products() {
             </p>
           </div>
           <button
-            onClick={() => { setForm(emptyForm); setView('create'); }}
+            onClick={() => { setForm(emptyForm); setCreateFiles([]); setCreateImageError(''); setView('create'); }}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#C67D4A] text-white text-sm font-medium hover:bg-[#C67D4A]/90 transition-colors"
           >
             <Plus className="w-4 h-4" /> Yeni Ürün
@@ -314,14 +451,53 @@ export default function Products() {
                       ) : (
                         <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-500">Pasif</span>
                       )}
-                      <button onClick={() => startEdit(product)} className="p-1.5 rounded-lg text-[#8B5A2B] hover:bg-[#E8D5C4]/30 hover:text-[#C67D4A]">
+                      {isBrand && (product.draft_status === 'rejected' || product.approval_status === 'rejected') ? (
+                        <span className="text-[10px] font-semibold text-red-600">
+                          {product.draft_action === 'delete' ? 'Silme reddedildi' : product.draft_status === 'rejected' ? 'Güncelleme reddedildi' : 'Ürün reddedildi'}
+                        </span>
+                      ) : isBrand && product.draft_action === 'delete' && product.draft_status === 'pending_approval' ? (
+                        <span className="text-[10px] font-semibold text-amber-700">
+                          Silme onayı bekliyor
+                        </span>
+                      ) : isBrand && product.draft_status === 'pending_approval' ? (
+                        <span className="text-[10px] font-semibold text-amber-700">
+                          Güncelleme onayı bekliyor
+                        </span>
+                      ) : isBrand && product.draft_status === 'approved' ? (
+                        <span className="hidden text-[10px] font-semibold text-olive sm:inline">Değişiklik onaylandı</span>
+                      ) : isBrand && product.approval_status && (
+                        <span className="hidden text-[10px] font-semibold text-terracotta sm:inline">
+                          {product.approval_status === 'approved' ? 'Onaylı' : product.approval_status === 'pending_approval' ? 'Onay bekliyor' : product.approval_status === 'rejected' ? 'Reddedildi' : 'Taslak'}
+                        </span>
+                      )}
+                      {isBrand && (product.approval_status === 'pending_approval' || product.draft_status === 'pending_approval') && (
+                        <button
+                          type="button"
+                          title="Onay talebini geri çek"
+                          disabled={withdrawMutation.isPending && withdrawMutation.variables?.id === product.id}
+                          onClick={() => handleWithdrawApproval(product)}
+                          className="flex items-center gap-1 rounded-lg border border-terracotta/30 px-2 py-1.5 text-[11px] font-medium text-terracotta transition-colors hover:bg-terracotta/10 disabled:cursor-wait disabled:opacity-50"
+                        >
+                          {withdrawMutation.isPending && withdrawMutation.variables?.id === product.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Undo2 className="h-3.5 w-3.5" />}
+                          Geri çek
+                        </button>
+                      )}
+                      <button disabled={product.approval_status === 'pending_approval' || product.draft_status === 'pending_approval'} onClick={() => startEdit(product)} className="p-1.5 rounded-lg text-[#8B5A2B] hover:bg-[#E8D5C4]/30 hover:text-[#C67D4A] disabled:cursor-not-allowed disabled:opacity-35">
                         <Edit3 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(product.id, product.name)} className="p-1.5 rounded-lg text-[#8B5A2B] hover:bg-red-50 hover:text-red-500">
+                      <button title={product.approval_status === 'pending_approval' || product.draft_status === 'pending_approval' ? 'Önce bekleyen onay talebini geri çekin' : undefined} disabled={product.approval_status === 'pending_approval' || product.draft_status === 'pending_approval'} onClick={() => handleDelete(product.id, product.name)} className="p-1.5 rounded-lg text-[#8B5A2B] hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-35">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
+                  {isBrand && (product.draft_rejection_reason || product.rejection_reason) && (
+                    <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
+                      <p className="text-xs font-semibold text-red-700">Ret nedeni</p>
+                      <p className="mt-1 text-sm text-red-800">{product.draft_rejection_reason || product.rejection_reason}</p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -356,7 +532,13 @@ export default function Products() {
             {view === 'create' ? 'Yeni Ürün Oluştur' : 'Ürünü Düzenle'}
           </h1>
           <p className="text-sm text-[#8B5A2B] mt-0.5">
-            {view === 'create' ? 'Ürünü oluşturduktan sonra fotoğraf ekleyebilirsiniz.' : 'Ürün bilgilerini güncelleyin ve fotoğraf yönetin.'}
+            {view === 'create'
+              ? (isBrand
+                ? 'Ürün bilgilerini ve en az bir fotoğrafı ekleyerek taslağı oluşturun.'
+                : 'Ürün bilgilerini ve en az bir fotoğrafı birlikte ekleyin.')
+              : (isBrand
+                ? 'Bilgiler, fotoğraflar ve seçenekler birlikte kaydedilip Panelistan onayına gönderilir.'
+                : 'Ürün bilgilerini, fotoğrafları, bedenleri ve renkleri birlikte yönetin.')}
           </p>
         </div>
       </div>
@@ -368,11 +550,10 @@ export default function Products() {
             form={form}
             setForm={setForm}
             flatCategories={flatCategories}
+            variantsSection={view === 'edit' && editingId && form.pricing_type === 'fixed'
+              ? <ProductVariants productId={editingId} isBrand={isBrand} embedded saveRef={variantSaveRef} />
+              : null}
           />
-
-          {view === 'edit' && editingId && form.pricing_type === 'fixed' && (
-            <ProductVariants productId={editingId} />
-          )}
 
           <div className="flex gap-2 justify-end">
             <button onClick={goToList} className="px-4 py-2 text-sm text-[#8B5A2B] hover:bg-[#E8D5C4]/20 rounded-lg">
@@ -380,15 +561,19 @@ export default function Products() {
             </button>
             <button
               onClick={view === 'create' ? handleSubmitCreate : handleSubmitEdit}
-              disabled={!form.name || !form.category_id || (view === 'create' ? createMutation.isPending : updateMutation.isPending)}
+              disabled={!form.name || !form.category_id || (view === 'create' ? createMutation.isPending || createFiles.length === 0 : savingAll)}
               className="px-6 py-2 text-sm bg-[#4A5D23] text-white font-medium rounded-lg hover:bg-[#4A5D23]/90 disabled:opacity-40 flex items-center gap-1.5"
             >
-              {(createMutation.isPending || updateMutation.isPending) ? (
+              {(createMutation.isPending || savingAll) ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isBrand && view === 'edit' ? (
+                <Send className="w-4 h-4" />
               ) : (
                 <Save className="w-4 h-4" />
               )}
-              {view === 'create' ? 'Ürünü Oluştur' : 'Değişiklikleri Kaydet'}
+              {view === 'create'
+                ? (isBrand ? 'Ürün Taslağını Oluştur' : 'Ürünü Oluştur')
+                : (isBrand ? 'Onaya Gönder' : 'Değişiklikleri Kaydet')}
             </button>
           </div>
           {(createMutation.isError || updateMutation.isError) && (
@@ -396,15 +581,18 @@ export default function Products() {
               {(createMutation.error || updateMutation.error)?.response?.data?.message || 'Hata oluştu'}
             </p>
           )}
-          {updateMutation.isSuccess && (
+          {!isBrand && updateMutation.isSuccess && !savingAll && !saveAllError && (
             <p className="text-xs text-green-600">Değişiklikler kaydedildi.</p>
           )}
+          {(createImageError || saveAllError) && <p className="text-xs text-red-500">{createImageError || saveAllError}</p>}
         </div>
 
         {/* Right: Images (only in edit mode) */}
         <div className="lg:col-span-1">
           {view === 'edit' && editingId ? (
-            <ProductImages productId={editingId} productSlug={form.slug} />
+            <ProductImages productId={editingId} productSlug={form.slug} isBrand={isBrand} />
+          ) : view === 'create' ? (
+            <CreateProductImages files={createFiles} setFiles={setCreateFiles} error={createImageError} />
           ) : (
             <div className="bg-white rounded-xl border border-[#E8D5C4]/50 p-6 text-center">
               <ImageIcon className="w-10 h-10 text-[#E8D5C4] mx-auto mb-2" />
@@ -420,7 +608,7 @@ export default function Products() {
 /* ============================================================
    ÜRÜN FORMU
    ============================================================ */
-const ProductForm = ({ form, setForm, flatCategories }) => {
+const ProductForm = ({ form, setForm, flatCategories, variantsSection }) => {
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
   return (
@@ -577,6 +765,8 @@ const ProductForm = ({ form, setForm, flatCategories }) => {
         )}
       </div>
 
+      {variantsSection}
+
       {/* İndirim */}
       <div className="bg-white rounded-xl border border-[#E8D5C4]/50 p-5">
         <h3 className="text-sm font-bold text-[#3D2914] mb-3">İndirim</h3>
@@ -712,10 +902,10 @@ const PRESET_COLORS = [
 
 const genClientId = () => `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-const ProductVariants = ({ productId }) => {
+const ProductVariants = ({ productId, isBrand = false, embedded = false, saveRef }) => {
   const { data: product, isLoading } = useQuery({
-    queryKey: ['adminProductDetail', productId],
-    queryFn: () => getAdminProductDetail(productId),
+    queryKey: [isBrand ? 'brandProductDetail' : 'adminProductDetail', productId],
+    queryFn: () => isBrand ? getBrandProduct(productId) : getAdminProductDetail(productId),
   });
 
   if (isLoading || !product) {
@@ -728,28 +918,33 @@ const ProductVariants = ({ productId }) => {
 
   // key={productId}: farklı bir ürün düzenlenmeye başlanınca state sıfırdan kurulsun.
   // Kaydetme sonrası senkronizasyon useEffect yerine mutation'ın onSuccess'inde yapılır (aşağıda).
-  return <VariantEditor key={productId} productId={productId} initialProduct={product} />;
+  return <VariantEditor key={productId} productId={productId} initialProduct={product} isBrand={isBrand} embedded={embedded} saveRef={saveRef} />;
 };
 
 const mapSizesFromServer = (sizes) => (sizes || []).map((s) => ({
-  client_id: s.id, id: s.id, name: s.name, price: s.price, display_order: s.display_order,
+  client_id: s.client_id || s.id, id: s.id, name: s.name, price: s.price, display_order: s.display_order,
 }));
 const mapColorsFromServer = (colors) => (colors || []).map((c) => ({
-  client_id: c.id, id: c.id, name: c.name, hex_code: c.hex_code, is_default: c.is_default, display_order: c.display_order,
+  client_id: c.client_id || c.id, id: c.id, name: c.name, hex_code: c.hex_code, is_default: c.is_default, display_order: c.display_order,
 }));
 const mapStockFromServer = (variants) => {
   const map = {};
-  (variants || []).forEach((v) => { map[`${v.size_id || 'none'}|${v.color_id || 'none'}`] = v.stock_quantity; });
+  (variants || []).forEach((v) => {
+    const sizeKey = v.size_client_id || v.size_id || 'none';
+    const colorKey = v.color_client_id || v.color_id || 'none';
+    map[`${sizeKey}|${colorKey}`] = v.stock_quantity;
+  });
   return map;
 };
 
-const VariantEditor = ({ productId, initialProduct }) => {
+const VariantEditor = ({ productId, initialProduct, isBrand = false, embedded = false, saveRef }) => {
   const queryClient = useQueryClient();
   const [sizes, setSizes] = useState(() => mapSizesFromServer(initialProduct.sizes));
   const [colors, setColors] = useState(() => mapColorsFromServer(initialProduct.colors));
   const [stockMap, setStockMap] = useState(() => mapStockFromServer(initialProduct.variants));
   const [customColorName, setCustomColorName] = useState('');
   const [customColorHex, setCustomColorHex] = useState('#8B5A2B');
+  const [validationError, setValidationError] = useState('');
 
   const addSize = () => setSizes((s) => [...s, { client_id: genClientId(), id: null, name: '', price: '', display_order: s.length }]);
   const updateSize = (clientId, field, value) => setSizes((s) => s.map((sz) => (sz.client_id === clientId ? { ...sz, [field]: value } : sz)));
@@ -782,22 +977,42 @@ const VariantEditor = ({ productId, initialProduct }) => {
   const setStock = (sizeId, colorId, value) => setStockMap((m) => ({ ...m, [stockKey(sizeId, colorId)]: value }));
 
   const saveMutation = useMutation({
-    mutationFn: (data) => saveProductVariants(productId, data),
+    mutationFn: async (data) => {
+      const result = await (isBrand ? saveBrandProductVariants(productId, data) : saveProductVariants(productId, data));
+      if ((result.sizes?.length || 0) !== data.sizes.length || (result.colors?.length || 0) !== data.colors.length) {
+        throw new Error('Varyantlar sunucuda doğrulanamadı');
+      }
+      return result;
+    },
     onSuccess: (result) => {
       // Sunucudan dönen gerçek id'lerle senkronize et — yoksa yeni eklenen bir satır
       // ikinci kaydetmede tekrar INSERT edilip yinelenen bir varyant satırı oluşturur.
       setSizes(mapSizesFromServer(result.sizes));
       setColors(mapColorsFromServer(result.colors));
       setStockMap(mapStockFromServer(result.variants));
-      queryClient.setQueryData(['adminProductDetail', productId], (old) => (old ? { ...old, ...result } : old));
-      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+      const detailKey = isBrand ? 'brandProductDetail' : 'adminProductDetail';
+      const listKey = isBrand ? 'brandProducts' : 'adminProducts';
+      queryClient.setQueryData([detailKey, productId], (old) => (old ? { ...old, ...result } : old));
+      queryClient.invalidateQueries({ queryKey: [listKey] });
+      queryClient.invalidateQueries({ queryKey: [detailKey, productId] });
+      setValidationError('');
     },
   });
 
   const activeSizes = sizes.filter((s) => s.name.trim());
   const activeColors = colors.filter((c) => c.name.trim());
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const incompleteSize = sizes.find((size) => size.name.trim() && size.price === '');
+    if (incompleteSize) {
+      setValidationError('Eklenen her beden için fiyat girmelisiniz.');
+      throw new Error('Eklenen her beden için fiyat girmelisiniz.');
+    }
+    if (sizes.some((size) => !size.name.trim() && size.price !== '')) {
+      setValidationError('Fiyat girilen bedenin adını da yazmalısınız.');
+      throw new Error('Fiyat girilen bedenin adını da yazmalısınız.');
+    }
+    setValidationError('');
     const validSizes = activeSizes.filter((s) => s.price !== '');
     const payload = {
       sizes: validSizes.map((s) => ({ id: s.id, client_id: s.client_id, name: s.name.trim(), price: parseFloat(s.price) || 0, display_order: s.display_order })),
@@ -819,23 +1034,21 @@ const VariantEditor = ({ productId, initialProduct }) => {
         }
       }
     }
-    saveMutation.mutate(payload);
+    return saveMutation.mutateAsync(payload);
   };
 
+  React.useImperativeHandle(saveRef, () => handleSave);
+
   return (
-    <div className="bg-white rounded-xl border border-[#E8D5C4]/50 p-5 space-y-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-[#3D2914]">Varyantlar (Beden / Renk)</h3>
-        <button
-          onClick={handleSave}
-          disabled={saveMutation.isPending}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#4A5D23] text-white text-xs font-medium hover:bg-[#4A5D23]/90 disabled:opacity-50"
-        >
-          {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-          Varyantları Kaydet
-        </button>
+    <div className={`${embedded ? 'bg-[#FAF6F0]/45' : 'bg-white'} rounded-xl border border-[#E8D5C4]/50 p-5 space-y-5`}>
+      <div>
+        <div>
+          <h3 className="text-sm font-bold text-[#3D2914]">Ürün Seçenekleri</h3>
+          <p className="mt-0.5 text-xs text-[#8B5A2B]">Bedenleri, renkleri ve her kombinasyonun stok miktarını birlikte yönetin.</p>
+        </div>
       </div>
-      {saveMutation.isSuccess && <p className="text-xs text-green-600">Varyantlar kaydedildi.</p>}
+      {saveMutation.isSuccess && <p className="text-xs text-green-600">Bedenler, renkler ve stok seçenekleri sunucuda doğrulanarak kaydedildi.</p>}
+      {validationError && <p className="text-xs text-red-500">{validationError}</p>}
       {saveMutation.isError && (
         <p className="text-xs text-red-500">{saveMutation.error?.response?.data?.message || 'Hata oluştu'}</p>
       )}
@@ -994,32 +1207,84 @@ const VariantEditor = ({ productId, initialProduct }) => {
 /* ============================================================
    FOTOĞRAF YÖNETİMİ
    ============================================================ */
-const ProductImages = ({ productId, productSlug }) => {
+const CreateProductImages = ({ files, setFiles, error }) => {
+  const inputRef = useRef(null);
+  const [fileError, setFileError] = useState('');
+
+  const addFiles = (event) => {
+    const selected = Array.from(event.target.files || []);
+    const invalid = selected.find((file) => !file.type.startsWith('image/') || file.size > 15 * 1024 * 1024);
+    if (invalid) {
+      setFileError('Yalnızca 15 MB altındaki görsel dosyalarını seçebilirsiniz.');
+      event.target.value = '';
+      return;
+    }
+    setFileError('');
+    setFiles((current) => [...current, ...selected.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      id: `${file.name}-${file.size}-${file.lastModified}`,
+    }))]);
+    event.target.value = '';
+  };
+
+  const removeFile = (id) => {
+    setFiles((current) => {
+      const removed = current.find((item) => item.id === id);
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return current.filter((item) => item.id !== id);
+    });
+  };
+
+  return <div className="rounded-xl border border-[#E8D5C4]/50 bg-white p-5">
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <div><h3 className="flex items-center gap-2 text-sm font-bold text-[#3D2914]"><ImageIcon className="h-4 w-4 text-[#C67D4A]" />Ürün Fotoğrafları *</h3><p className="mt-1 text-xs text-[#8B5A2B]">İlk fotoğraf ana ürün görseli olur.</p></div>
+      <button type="button" onClick={() => inputRef.current?.click()} className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#C67D4A] px-3 py-2 text-xs font-medium text-white"><Upload className="h-3.5 w-3.5" />Fotoğraf Seç</button>
+    </div>
+    <input ref={inputRef} type="file" accept="image/*" multiple onChange={addFiles} className="hidden" />
+    {files.length === 0 ? <button type="button" onClick={() => inputRef.current?.click()} className="w-full rounded-xl border border-dashed border-[#D4A574] bg-[#FAF6F0] p-8 text-center text-sm text-[#8B5A2B]">Ürünü oluşturmak için en az bir fotoğraf seçin.</button> : <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{files.map((item, index) => <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg bg-[#FAF6F0]"><img src={item.preview} alt={`Ürün fotoğrafı ${index + 1}`} className="h-full w-full object-cover" />{index === 0 && <span className="absolute left-2 top-2 rounded-md bg-[#3D2914] px-2 py-1 text-[10px] font-medium text-white">Ana fotoğraf</span>}<button type="button" aria-label="Fotoğrafı kaldır" onClick={() => removeFile(item.id)} className="absolute right-2 top-2 rounded-lg bg-white/90 p-1.5 text-red-600 shadow-sm"><Trash2 className="h-3.5 w-3.5" /></button></div>)}</div>}
+    {(fileError || error) && <p className="mt-2 text-xs text-red-500">{fileError || error}</p>}
+  </div>;
+};
+
+const ProductImages = ({ productId, productSlug, isBrand = false }) => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
+  const detailQueryKey = [isBrand ? 'brandProductDetail' : 'adminProductDetail', productId];
+  const listQueryKey = [isBrand ? 'brandProducts' : 'adminProducts'];
 
   const { data: product, isLoading } = useQuery({
-    queryKey: ['adminProductDetail', productId],
-    queryFn: () => getAdminProductDetail(productId),
+    queryKey: detailQueryKey,
+    queryFn: () => isBrand ? getBrandProduct(productId) : getAdminProductDetail(productId),
   });
 
   const images = product?.images || [];
 
   const addImageMutation = useMutation({
-    mutationFn: (data) => addProductImage(productId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminProductDetail', productId] });
-      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+    mutationFn: (data) => isBrand ? addBrandProductImage(productId, data) : addProductImage(productId, data),
+    onSuccess: async (image) => {
+      queryClient.setQueryData(detailQueryKey, (current) => current
+        ? { ...current, images: [...(current.images || []), image] }
+        : current);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: detailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: listQueryKey }),
+      ]);
     },
   });
 
   const removeImageMutation = useMutation({
-    mutationFn: (imageId) => removeProductImage(productId, imageId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminProductDetail', productId] });
-      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+    mutationFn: (imageId) => isBrand ? removeBrandProductImage(productId, imageId) : removeProductImage(productId, imageId),
+    onSuccess: async (_result, imageId) => {
+      queryClient.setQueryData(detailQueryKey, (current) => current
+        ? { ...current, images: (current.images || []).filter((image) => image.id !== imageId) }
+        : current);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: detailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: listQueryKey }),
+      ]);
     },
   });
 
@@ -1076,8 +1341,18 @@ const ProductImages = ({ productId, productSlug }) => {
           thumbnail_url: thumbnailUrl,
         });
       }
+      triggerActionToast({
+        type: 'success',
+        title: files.length > 1 ? 'Fotoğraflar yüklendi' : 'Fotoğraf yüklendi',
+        message: `${files.length} fotoğraf ürüne başarıyla eklendi.`,
+      });
     } catch (err) {
       console.error('Upload error:', err);
+      triggerActionToast({
+        type: 'error',
+        title: 'Fotoğraf yüklenemedi',
+        message: err?.response?.data?.message || 'Yükleme tamamlanamadı. Lütfen tekrar deneyin.',
+      });
     } finally {
       setUploading(false);
       setUploadProgress('');
@@ -1105,9 +1380,19 @@ const ProductImages = ({ productId, productSlug }) => {
         thumbUrl = await getDownloadURL(thumbRef);
       }
 
-      await setProductPrimaryImage(productId, img.id, thumbUrl);
-      queryClient.invalidateQueries({ queryKey: ['adminProductDetail', productId] });
-      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+      await (isBrand ? setBrandProductPrimaryImage : setProductPrimaryImage)(productId, img.id, thumbUrl);
+      queryClient.setQueryData(detailQueryKey, (current) => current ? {
+        ...current,
+        images: (current.images || []).map((image) => ({
+          ...image,
+          is_primary: image.id === img.id,
+          thumbnail_url: image.id === img.id ? thumbUrl : image.thumbnail_url,
+        })),
+      } : current);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: detailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: listQueryKey }),
+      ]);
     } catch (err) {
       console.error('Set primary error:', err);
     } finally {
@@ -1205,6 +1490,7 @@ const ProductImages = ({ productId, productSlug }) => {
           <p className="text-[10px] text-[#8B5A2B]/50 mt-1.5 text-center">
             Birden fazla fotoğraf seçebilirsiniz. İlk yüklenen otomatik ana fotoğraf olur.
           </p>
+          {removeImageMutation.isError && <p className="mt-2 text-xs text-red-500">{removeImageMutation.error?.response?.data?.message || 'Fotoğraf silinemedi.'}</p>}
         </>
       )}
     </div>

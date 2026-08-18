@@ -3,7 +3,7 @@ import { Phone, Mail, MapPin, Clock, Send, Instagram, CheckCircle2 } from 'lucid
 
 const contactInfo = [
   { icon: Phone, label: 'Telefon', value: '+90 212 123 45 67', href: 'tel:+902121234567' },
-  { icon: Mail, label: 'E-posta', value: 'info@poiwood.com', href: 'mailto:info@poiwood.com' },
+  { icon: Mail, label: 'E-posta', value: 'info@panelistan.com', href: 'mailto:info@panelistan.com' },
   { icon: MapPin, label: 'Adres', value: 'Caferağa Mah. Moda Cad. No:42, Kadıköy / İstanbul' },
   { icon: Clock, label: 'Çalışma Saatleri', value: 'Pzt - Cmt: 09:00 - 18:00' },
 ];
@@ -98,7 +98,7 @@ const Contact = () => {
             {/* Harita */}
             <div className="bg-white rounded-2xl card-shadow overflow-hidden">
               <iframe
-                title="Poiwood Konum"
+                title="Panelistan Konum"
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3011.6504900397395!2d29.02517!3d40.98178!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cab9e7a7777c43%3A0x4c76cf3dcc8b330b!2sKad%C4%B1k%C3%B6y%2C%20Istanbul!5e0!3m2!1str!2str!4v1"
                 className="w-full h-[200px]"
                 style={{ border: 0 }}

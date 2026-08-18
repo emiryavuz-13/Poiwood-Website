@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, FolderTree, Ticket,
-  Star, MessageCircleQuestion, Menu, X, ExternalLink, Sparkles,
+  Star, MessageCircleQuestion, Menu, X, ExternalLink, Sparkles, Building2, ClipboardCheck,
 } from 'lucide-react';
+import Logo from '../components/Logo';
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/products', label: 'Ürünler', icon: Package },
+  { to: '/admin/product-approvals', label: 'Ürün Onayları', icon: ClipboardCheck },
+  { to: '/admin/brands', label: 'Markalar', icon: Building2 },
   { to: '/admin/orders', label: 'Siparişler', icon: ShoppingCart },
   { to: '/admin/categories', label: 'Kategoriler', icon: FolderTree },
   { to: '/admin/coupons', label: 'Kuponlar', icon: Ticket },
@@ -73,7 +76,8 @@ const AdminLayout = () => {
       }`}>
         <div className="flex h-14 items-center justify-between border-b border-[#E8D5C4]/50 px-4">
           <Link to="/admin" className="flex items-center gap-2 font-bold text-[#3D2914] text-sm tracking-wide">
-            POIWOOD YÖNETİM
+            <Logo markClassName="w-6 h-6" />
+            PANELİSTAN YÖNETİM
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -97,7 +101,8 @@ const AdminLayout = () => {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <span className="text-sm font-bold text-[#3D2914] tracking-wide">POIWOOD</span>
+          <Logo markClassName="w-6 h-6" />
+          <span className="text-sm font-bold text-[#3D2914] tracking-wide">PANELİSTAN</span>
         </header>
 
         {/* Content */}

@@ -1,7 +1,7 @@
 const sections = [
   {
     title: 'Toplanan Veriler',
-    content: `Poiwood olarak, hizmetlerimizi sunabilmek için aşağıdaki kişisel verileri topluyoruz:
+    content: `Panelistan olarak, hizmetlerimizi sunabilmek için aşağıdaki kişisel verileri topluyoruz:
 
 • Ad, soyad ve iletişim bilgileri (e-posta, telefon)
 • Teslimat adresi bilgileri
@@ -53,7 +53,7 @@ Kişisel verileriniz hiçbir koşulda reklam veya pazarlama amacıyla üçüncü
 • İşlemenin kısıtlanmasını talep etme
 • Verilerinizin aktarıldığı üçüncü tarafları öğrenme
 
-Bu haklarınızı kullanmak için info@poiwood.com adresine başvurabilirsiniz.`,
+Bu haklarınızı kullanmak için info@panelistan.com adresine başvurabilirsiniz.`,
   },
   {
     title: 'Politika Güncellemeleri',

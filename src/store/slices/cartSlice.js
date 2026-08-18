@@ -1,10 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit';
-
-const STORAGE_KEY = 'poiwood_guest_cart';
+import { GUEST_CART_KEY as STORAGE_KEY, LEGACY_GUEST_CART_KEYS, readMigrated } from '../../utils/storage';
 
 const loadGuestCart = () => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readMigrated(localStorage, STORAGE_KEY, LEGACY_GUEST_CART_KEYS);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -54,6 +53,10 @@ const cartSlice = createSlice({
           variant_id: variant_id || null,
           variant_size_name: variant_size_name || null,
           variant_color_name: variant_color_name || null,
+          brand_id: product.brand_id,
+          brand_name: product.brand_name || 'Panelistan',
+          brand_shipping_fee: Number(product.brand_shipping_fee || 0),
+          free_shipping_threshold: product.free_shipping_threshold == null ? null : Number(product.free_shipping_threshold),
         });
       }
       saveGuestCart(state.items);

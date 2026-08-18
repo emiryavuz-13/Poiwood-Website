@@ -32,6 +32,18 @@ import CookiePolicy from './pages/public/CookiePolicy';
 import NotFound from './pages/public/NotFound';
 import AuthProvider from './components/auth/AuthProvider';
 import Toast from './components/Toast';
+import BrandRoute from './components/auth/BrandRoute';
+import BrandPanelLayout from './layouts/BrandPanelLayout';
+import ChangePassword from './pages/public/ChangePassword';
+import BrandDashboard from './pages/brand/Dashboard';
+import BrandProducts from './pages/brand/Products';
+import BrandOrders from './pages/brand/Orders';
+import BrandCoupons from './pages/brand/Coupons';
+import BrandReviews from './pages/brand/Reviews';
+import BrandQuestions from './pages/brand/Questions';
+import BrandApprovalHistory from './pages/brand/ApprovalHistory';
+import Brands from './pages/admin/Brands';
+import ProductApprovals from './pages/admin/ProductApprovals';
 
 function App() {
   return (
@@ -65,6 +77,7 @@ function App() {
           {/* SADECE GİRİŞ YAPANLAR İÇİN: */}
           <Route element={<ProtectedRoute />}>
              <Route path="/profile" element={<Profile />} />
+             <Route path="/change-password" element={<ChangePassword />} />
           </Route>
         </Route>
 
@@ -73,12 +86,25 @@ function App() {
           <Route element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="products" element={<Products />} />
+            <Route path="product-approvals" element={<ProductApprovals />} />
+            <Route path="brands" element={<Brands />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="coupons" element={<AdminCoupons />} />
             <Route path="reviews" element={<AdminReviews />} />
             <Route path="questions" element={<AdminQuestions />} />
             <Route path="stories" element={<AdminStories />} />
+          </Route>
+        </Route>
+        <Route path="/brand-panel" element={<BrandRoute />}>
+          <Route element={<BrandPanelLayout />}>
+            <Route index element={<BrandDashboard />} />
+            <Route path="products" element={<BrandProducts />} />
+            <Route path="approval-history" element={<BrandApprovalHistory />} />
+            <Route path="orders" element={<BrandOrders />} />
+            <Route path="coupons" element={<BrandCoupons />} />
+            <Route path="reviews" element={<BrandReviews />} />
+            <Route path="questions" element={<BrandQuestions />} />
           </Route>
         </Route>
         {/* 404 */}

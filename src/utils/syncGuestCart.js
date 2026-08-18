@@ -1,11 +1,10 @@
 import { addToCart } from '../api/cart';
-
-const STORAGE_KEY = 'poiwood_guest_cart';
+import { GUEST_CART_KEY as STORAGE_KEY, LEGACY_GUEST_CART_KEYS, readMigrated } from './storage';
 
 export const syncGuestCartToServer = async () => {
   let guestItems;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readMigrated(localStorage, STORAGE_KEY, LEGACY_GUEST_CART_KEYS);
     guestItems = raw ? JSON.parse(raw) : [];
   } catch {
     return;

@@ -8,6 +8,7 @@ import {
   sendPasswordResetEmail,
   signOut,
   updateProfile,
+  updatePassword,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
@@ -63,6 +64,14 @@ export const authAPI = {
   // Mevcut Oturumu Senkronize Et
   syncMe: async () => {
     const { data } = await api.get('/auth/me');
+    return data;
+  },
+
+  changeTemporaryPassword: async (newPassword) => {
+    if (!auth.currentUser) throw new Error('Aktif oturum bulunamadı');
+    await updatePassword(auth.currentUser, newPassword);
+    const { data } = await api.post('/auth/password-changed');
+    await auth.currentUser.getIdToken(true);
     return data;
   },
 };

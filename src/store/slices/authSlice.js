@@ -20,6 +20,9 @@ const authSlice = createSlice({
     setEmailVerified: (state, action) => {
       state.emailVerified = action.payload;
     },
+    setUser: (state, action) => {
+      state.user = action.payload;
+    },
     logout: (state) => {
       state.user = null;
       state.token = null;
@@ -29,5 +32,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { login, setEmailVerified, logout } = authSlice.actions;
+export const { login, setEmailVerified, setUser, logout } = authSlice.actions;
 export default authSlice.reducer;

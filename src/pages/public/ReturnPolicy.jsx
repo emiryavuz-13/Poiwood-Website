@@ -5,7 +5,7 @@ const steps = [
   {
     icon: Mail,
     title: '1. Başvuru',
-    description: 'İade talebinizi iletişim formu veya info@poiwood.com adresinden bize iletin.',
+    description: 'İade talebinizi iletişim formu veya info@panelistan.com adresinden bize iletin.',
   },
   {
     icon: PackageCheck,
@@ -89,7 +89,7 @@ const ReturnPolicy = () => {
           <div className="bg-[#FFF8F0] border border-[#E8D5C4] rounded-xl p-4 flex gap-3">
             <AlertCircle className="w-5 h-5 text-[#C67D4A] shrink-0 mt-0.5" />
             <p className="text-sm text-[#8B5A2B]">
-              Sorularınız için <Link to="/contact" className="text-[#C67D4A] font-medium hover:underline">iletişim sayfamızdan</Link> veya <strong>info@poiwood.com</strong> adresinden bize ulaşabilirsiniz.
+              Sorularınız için <Link to="/contact" className="text-[#C67D4A] font-medium hover:underline">iletişim sayfamızdan</Link> veya <strong>info@panelistan.com</strong> adresinden bize ulaşabilirsiniz.
             </p>
           </div>
         </div>

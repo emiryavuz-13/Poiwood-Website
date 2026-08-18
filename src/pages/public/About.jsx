@@ -38,7 +38,7 @@ const About = () => {
       <div className="relative overflow-hidden min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center">
         <img
           src="/images/about-hero.jpg"
-          alt="Poiwood atölye"
+          alt="Panelistan atölye"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-[#3D2914]/60" />
@@ -47,7 +47,7 @@ const About = () => {
             Ahşabın Sıcaklığını<br />Evinize Taşıyoruz
           </h1>
           <p className="text-white/80 text-base sm:text-lg max-w-[600px] mx-auto leading-relaxed">
-            Poiwood, doğanın en güzel dokusunu modern tasarımlarla buluşturarak yaşam alanlarınıza anlam katan el yapımı ahşap ürünler üretir.
+            Panelistan, doğanın en güzel dokusunu modern tasarımlarla buluşturarak yaşam alanlarınıza anlam katan el yapımı ahşap ürünler üretir.
           </p>
         </div>
       </div>
@@ -62,7 +62,7 @@ const About = () => {
               </h2>
               <div className="space-y-4 text-[#8B5A2B] leading-relaxed text-sm sm:text-base">
                 <p>
-                  Poiwood, ahşaba olan tutkumuzdan doğdu. 2023 yılında İstanbul'da küçük bir atölyede başlayan yolculuğumuz, bugün binlerce eve dokunan bir markaya dönüştü.
+                  Panelistan, ahşaba olan tutkumuzdan doğdu. 2023 yılında İstanbul'da küçük bir atölyede başlayan yolculuğumuz, bugün binlerce eve dokunan bir markaya dönüştü.
                 </p>
                 <p>
                   Her bir ürünümüz, doğanın bize sunduğu eşsiz desenleri koruyarak, modern yaşam alanlarına uyum sağlayacak şekilde tasarlanır. Ceviz, meşe ve çam gibi seçkin ağaç türlerini kullanarak zamansız parçalar ortaya koyuyoruz.
@@ -75,7 +75,7 @@ const About = () => {
             <div className="rounded-2xl overflow-hidden bg-[#E8D5C4]/30 aspect-[4/3]">
               <img
                 src="/images/about-story.jpg"
-                alt="Poiwood atölye"
+                alt="Panelistan atölye"
                 className="w-full h-full object-cover"
               />
             </div>

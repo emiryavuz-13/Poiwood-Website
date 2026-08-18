@@ -206,6 +206,8 @@ const OrderResult = ({ order }) => {
       )}
 
       {/* Order items */}
+      {order.fulfillments?.length > 0 && <div className="rounded-2xl bg-white p-5 card-shadow sm:p-6"><h3 className="mb-3 text-sm font-bold text-[#3D2914]">Marka Gönderileri</h3><div className="grid gap-3 sm:grid-cols-2">{order.fulfillments.map((fulfillment) => <div key={fulfillment.id} className="rounded-xl border border-[#E8D5C4] p-3 text-sm"><div className="flex items-center justify-between gap-2"><span className="font-semibold text-[#3D2914]">{fulfillment.brand_name}</span><span className="text-xs text-[#8B5A2B]">{fulfillment.status === 'ready_to_ship' ? 'Gönderime hazır' : fulfillment.status === 'pending_payment' ? 'Ödeme bekliyor' : fulfillment.status === 'paid' ? 'Ödendi' : fulfillment.status === 'preparing' ? 'Hazırlanıyor' : fulfillment.status === 'shipped' ? 'Kargoda' : fulfillment.status === 'delivered' ? 'Teslim edildi' : fulfillment.status}</span></div><div className="mt-2 flex justify-between text-xs text-[#8B5A2B]"><span>Kargo ücreti</span><span>{Number(fulfillment.shipping_fee) === 0 ? 'Ücretsiz' : `${Number(fulfillment.shipping_fee).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺`}</span></div>{fulfillment.cargo_company && <p className="mt-2 text-xs text-[#8B5A2B]"><Truck className="mr-1 inline h-3.5 w-3.5" />{fulfillment.cargo_company} · <span className="font-mono text-[#3D2914]">{fulfillment.tracking_number}</span></p>}</div>)}</div></div>}
+
       <div className="bg-white rounded-2xl card-shadow p-5 sm:p-6">
         <h3 className="text-sm font-bold text-[#3D2914] mb-3">Sipariş İçeriği</h3>
         <div className="space-y-2">

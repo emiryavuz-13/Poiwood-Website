@@ -13,7 +13,7 @@ import { getProductQuestions, createQuestion } from '../../api/questions';
 import { getProductReviews } from '../../api/reviews';
 import { useCart } from '../../hooks/useCart';
 import { useFavorites } from '../../hooks/useFavorites';
-import { triggerCartToast, triggerFavoriteToast } from '../../components/Toast';
+import { triggerCartToast, triggerFavoriteToast } from '../../utils/toast';
 import ProductCard from '../../components/ProductCard';
 import ReviewLightbox from '../../components/ReviewLightbox';
 import { Skeleton } from '../../components/ui/skeleton';

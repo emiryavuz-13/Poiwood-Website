@@ -8,6 +8,7 @@ import {
   ShoppingBag, AlertCircle,
 } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
+import { useCoupon } from '../../hooks/useCoupon';
 import { createOrder, createGuestOrder } from '../../api/orders';
 import { updateProfile } from '../../api/profile';
 import { iller, getIlceler } from '../../utils/turkiye-il-ilce';
@@ -21,14 +22,12 @@ const STEPS = [
 const Checkout = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user, emailVerified } = useSelector((state) => state.auth);
-  const { items, subtotal, clearAll } = useCart();
+  const { items, subtotal, brandGroups, shippingFee, total, clearAll } = useCart();
+  const { appliedCoupons, discountAmount, clearCoupons } = useCoupon(subtotal, brandGroups);
+  const discountedTotal = Math.max(0, total - discountAmount);
   const [step, setStep] = useState(0);
   const [completedOrder, setCompletedOrder] = useState(null);
   const [savePhoneToProfile, setSavePhoneToProfile] = useState(true);
-
-  const freeShippingThreshold = 500;
-  const shippingFee = subtotal >= freeShippingThreshold ? 0 : 49.90;
-  const total = subtotal + shippingFee;
 
   // Form state
   const [form, setForm] = useState({
@@ -41,7 +40,6 @@ const Checkout = () => {
     district: '',
     apartment: '',
     customerNote: '',
-    couponCode: '',
     paymentMethod: 'cod',
   });
 
@@ -107,7 +105,10 @@ const Checkout = () => {
         shipping_district: form.district,
         shipping_apartment: form.apartment,
         customer_note: form.customerNote || null,
-        coupon_code: form.couponCode || null,
+        coupon_code: appliedCoupons.find((coupon) => coupon.brandId === null)?.code || null,
+        brand_coupons: appliedCoupons
+          .filter((coupon) => coupon.brandId !== null)
+          .map((coupon) => ({ brand_id: coupon.brandId, code: coupon.code })),
       };
 
       // Telefon numarasını profil bilgilerine kaydet
@@ -137,6 +138,7 @@ const Checkout = () => {
     },
     onSuccess: (order) => {
       clearAll();
+      clearCoupons();
       setCompletedOrder(order);
     },
   });
@@ -235,13 +237,6 @@ const Checkout = () => {
                 <StepPayment
                   form={form}
                   setForm={setForm}
-                  items={items}
-                  subtotal={subtotal}
-                  shippingFee={shippingFee}
-                  total={total}
-                  onPlaceOrder={handlePlaceOrder}
-                  isPending={orderMutation.isPending}
-                  error={orderMutation.error}
                 />
               )}
 
@@ -303,7 +298,7 @@ const Checkout = () => {
 
           {/* Sipariş Özeti Sidebar */}
           <div className="lg:w-[340px] shrink-0">
-            <OrderSummary items={items} subtotal={subtotal} shippingFee={shippingFee} total={total} />
+            <OrderSummary items={items} subtotal={subtotal} shippingFee={shippingFee} total={discountedTotal} brandGroups={brandGroups} appliedCoupons={appliedCoupons} />
           </div>
         </div>
       </div>
@@ -477,7 +472,7 @@ const StepShipping = ({ form, setForm, errors }) => {
 /* ============================================================
    STEP 3 — ÖDEME & ONAY
    ============================================================ */
-const StepPayment = ({ form, setForm, items, subtotal, shippingFee, total }) => {
+const StepPayment = ({ form, setForm }) => {
   const fullName = `${form.firstName} ${form.lastName}`.trim();
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -739,7 +734,7 @@ const SelectField = ({ label, icon: Icon, value, onChange, error, placeholder, o
 /* ============================================================
    ORDER SUMMARY SIDEBAR
    ============================================================ */
-const OrderSummary = ({ items, subtotal, shippingFee, total }) => (
+const OrderSummary = ({ items, subtotal, shippingFee, total, brandGroups, appliedCoupons }) => (
   <div className="sticky top-24 bg-white rounded-2xl card-shadow overflow-hidden">
     <div className="p-5">
       <h3 className="text-base font-heading font-bold text-[#3D2914] mb-4">
@@ -783,12 +778,19 @@ const OrderSummary = ({ items, subtotal, shippingFee, total }) => (
           <span>Ara Toplam</span>
           <span>{Number(subtotal).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺</span>
         </div>
+        {brandGroups.map((group) => <div key={group.brand_id} className="flex justify-between text-xs text-[#8B5A2B]"><span>{group.brand_name} kargo</span><span>{Number(group.shipping_fee) === 0 ? 'Ücretsiz' : `${Number(group.shipping_fee).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺`}</span></div>)}
         <div className="flex justify-between text-[#8B5A2B]">
           <span>Kargo</span>
           <span className={shippingFee === 0 ? 'text-[#4A5D23] font-medium' : ''}>
             {shippingFee === 0 ? 'Ücretsiz' : `${shippingFee.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺`}
           </span>
         </div>
+        {appliedCoupons.map((coupon) => (
+          <div key={coupon.brandId || 'global'} className="flex justify-between font-medium text-[#4A5D23]">
+            <span>{coupon.brandName} kuponu ({coupon.code})</span>
+            <span>-{coupon.discountAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺</span>
+          </div>
+        ))}
       </div>
 
       <div className="border-t border-[#E8D5C4] mt-3 pt-3 flex justify-between items-baseline">

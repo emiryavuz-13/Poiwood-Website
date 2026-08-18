@@ -9,7 +9,7 @@ const AdminRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'platform_admin') {
     // Giriş yapmış ama "admin" değilse anasayfaya postalayıp engelle.
     return <Navigate to="/" replace />;
   }

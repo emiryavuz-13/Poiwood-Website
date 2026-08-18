@@ -2,17 +2,24 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, Trash2, Minus, Plus, ChevronRight,
-  ShoppingBag, Truck, ShieldCheck, Tag,
+  ShoppingBag, Truck, ShieldCheck, Tag, CheckCircle2, Loader2, X,
 } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
+import { useCoupon } from '../../hooks/useCoupon';
 import { Skeleton } from '../../components/ui/skeleton';
 
 const Cart = () => {
   const navigate = useNavigate();
-  const { items, subtotal, isLoading } = useCart();
+  const { items, subtotal, brandGroups, shippingFee, total, isLoading } = useCart();
+  const { appliedCoupons, discountAmount, applyCoupon, removeCoupon, isValidating, error: couponError } = useCoupon(subtotal, brandGroups);
+  const [couponInput, setCouponInput] = useState('');
+  const discountedTotal = Math.max(0, total - discountAmount);
 
-  const freeShippingThreshold = 500;
-  const remainingForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
+  const handleCouponSubmit = async (event) => {
+    event.preventDefault();
+    const applied = await applyCoupon(couponInput);
+    if (applied) setCouponInput('');
+  };
 
   if (isLoading) return <CartSkeleton />;
 
@@ -40,28 +47,12 @@ const Cart = () => {
       </div>
 
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pb-12 sm:pb-16">
-        {/* Free Shipping Progress */}
-        {remainingForFreeShipping > 0 ? (
-          <div className="bg-white rounded-xl p-4 card-shadow mb-6 flex items-center gap-3">
-            <Truck className="w-5 h-5 text-[#C67D4A] shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-[#3D2914]">
-                <span className="font-semibold">{remainingForFreeShipping.toLocaleString('tr-TR')}₺</span> daha ekleyin, <span className="font-semibold text-[#4A5D23]">ücretsiz kargo</span> kazanın!
-              </p>
-              <div className="h-1.5 rounded-full bg-[#E8D5C4]/50 mt-2 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-[#C67D4A] transition-all duration-500"
-                  style={{ width: `${Math.min(100, (subtotal / freeShippingThreshold) * 100)}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-[#4A5D23]/10 rounded-xl p-4 mb-6 flex items-center gap-3">
-            <Truck className="w-5 h-5 text-[#4A5D23] shrink-0" />
-            <p className="text-sm text-[#4A5D23] font-medium">Tebrikler! Ücretsiz kargo kazandınız.</p>
-          </div>
-        )}
+        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          {brandGroups.map((group) => {
+            const remaining = group.free_shipping_threshold == null ? null : Math.max(0, Number(group.free_shipping_threshold) - Number(group.items_subtotal));
+            return <div key={group.brand_id || group.brand_name} className="flex items-start gap-3 rounded-xl bg-white p-4 card-shadow"><Truck className="mt-0.5 h-5 w-5 shrink-0 text-[#C67D4A]" /><div><p className="text-sm font-semibold text-[#3D2914]">{group.brand_name}</p><p className="mt-1 text-xs text-[#8B5A2B]">{group.shipping_fee === 0 ? 'Ücretsiz kargo' : `Kargo: ${Number(group.shipping_fee).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺`}{remaining > 0 ? ` · Ücretsiz kargo için ${remaining.toLocaleString('tr-TR')}₺ daha` : ''}</p></div></div>;
+          })}
+        </div>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           {/* Cart Items */}
@@ -89,18 +80,54 @@ const Cart = () => {
                   </div>
                   <div className="flex justify-between text-[#8B5A2B]">
                     <span>Kargo</span>
-                    <span className={subtotal >= freeShippingThreshold ? 'text-[#4A5D23] font-medium' : ''}>
-                      {subtotal >= freeShippingThreshold ? 'Ücretsiz' : '49,90₺'}
-                    </span>
+                    <span className={shippingFee === 0 ? 'text-[#4A5D23] font-medium' : ''}>{shippingFee === 0 ? 'Ücretsiz' : `${shippingFee.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺`}</span>
                   </div>
+                  {brandGroups.map((group) => <div key={group.brand_id || group.brand_name} className="flex justify-between text-xs text-[#8B5A2B]"><span>{group.brand_name} kargo</span><span>{group.shipping_fee === 0 ? 'Ücretsiz' : `${Number(group.shipping_fee).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺`}</span></div>)}
                 </div>
 
                 <div className="border-t border-[#E8D5C4] my-4" />
 
+                <div className="mb-4">
+                  <p className="mb-2 text-sm font-semibold text-[#3D2914]">Kupon kodu</p>
+                  <form onSubmit={handleCouponSubmit} className="flex gap-2">
+                    <input value={couponInput} onChange={(event) => setCouponInput(event.target.value.toUpperCase())} placeholder="KUPON KODU" className="min-w-0 flex-1 rounded-xl border border-[#E8D5C4] px-3 py-2.5 text-sm uppercase text-[#3D2914] focus:border-[#C67D4A] focus:outline-none" />
+                    <button disabled={isValidating || !couponInput.trim()} className="rounded-xl bg-[#3D2914] px-4 text-sm font-semibold text-white disabled:opacity-60">
+                      {isValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Uygula'}
+                    </button>
+                  </form>
+                  {appliedCoupons.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {appliedCoupons.map((coupon) => (
+                        <div key={coupon.brandId || 'global'} className="flex items-center justify-between rounded-xl border border-[#4A5D23]/30 bg-[#4A5D23]/5 px-3 py-2.5">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-[#4A5D23]" />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-[#3D2914]">{coupon.code} · {coupon.brandName}</p>
+                              <p className="text-xs text-[#4A5D23]">{coupon.discountAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺ indirim</p>
+                            </div>
+                          </div>
+                          <button type="button" onClick={() => removeCoupon(coupon.brandId)} aria-label={`${coupon.code} kuponunu kaldır`} className="rounded-lg p-1.5 text-[#8B5A2B] hover:bg-white">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-2 text-xs text-[#8B5A2B]">Her mağaza için bir kupon kullanabilirsiniz. Tutar şartı ilgili mağazanın ürün toplamına göre hesaplanır.</p>
+                  {couponError && <p className="mt-2 text-xs text-red-600">{couponError}</p>}
+                </div>
+
+                {discountAmount > 0 && (
+                  <div className="mb-3 flex justify-between text-sm font-medium text-[#4A5D23]">
+                    <span>Kupon indirimi</span>
+                    <span>-{discountAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-baseline mb-6">
                   <span className="text-base font-semibold text-[#3D2914]">Toplam</span>
                   <span className="text-2xl font-bold text-[#C67D4A]">
-                    {(subtotal + (subtotal >= freeShippingThreshold ? 0 : 49.90)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺
+                    {discountedTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}₺
                   </span>
                 </div>
 
@@ -166,7 +193,8 @@ const CartItem = ({ item }) => {
         </Link>
 
         {/* Info */}
-        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 min-w-0 flex flex-col">
+          <p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wide text-[#C67D4A]">{item.brand_name || 'Panelistan'}</p>
           {/* Name + Remove */}
           <div className="flex justify-between gap-2 mb-1">
             <Link

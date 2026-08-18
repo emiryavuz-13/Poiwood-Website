@@ -372,7 +372,7 @@ const SpecialOffers = () => {
         <div className="text-center mb-12">
           <span className="text-[#C67D4A] font-semibold text-sm uppercase tracking-wider">Size Özel</span>
           <h2 className="text-3xl md:text-5xl font-heading font-bold text-[#3D2914] mt-2 mb-4">Özel Fırsatlar</h2>
-          <p className="text-[#8B5A2B] max-w-[600px] mx-auto">Poiwood'a özel avantajlardan yararlanın.</p>
+          <p className="text-[#8B5A2B] max-w-[600px] mx-auto">Panelistan'a özel avantajlardan yararlanın.</p>
         </div>
 
         {/* Grid */}

@@ -6,6 +6,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useQueryClient } from '@tanstack/react-query';
 import { login as loginAction } from '../../store/slices/authSlice';
+import Logo from '../../components/Logo';
 import { clearGuestCart } from '../../store/slices/cartSlice';
 import { authAPI } from '../../api/auth';
 import { syncGuestCartToServer } from '../../utils/syncGuestCart';
@@ -48,8 +49,12 @@ export default function Login() {
     dispatch(clearGuestCart());
     queryClient.invalidateQueries({ queryKey: ['cart'] });
 
-    if (res.user.role === 'admin') {
+    if (res.user.must_change_password) {
+      navigate('/change-password', { replace: true });
+    } else if (res.user.role === 'platform_admin') {
       navigate('/admin', { replace: true });
+    } else if (res.user.role === 'brand_manager') {
+      navigate('/brand-panel', { replace: true });
     } else {
       navigate(from, { replace: true });
     }
@@ -102,14 +107,18 @@ export default function Login() {
     <div className="hidden lg:flex lg:w-1/2 relative bg-[#3D2914] items-center justify-center overflow-hidden">
       <img
         src="/images/about-hero.jpg"
-        alt="Poiwood"
+        alt="Panelistan"
         className="absolute inset-0 w-full h-full object-cover opacity-30"
       />
       <div className="absolute inset-0 bg-gradient-to-br from-[#3D2914]/80 via-[#3D2914]/60 to-[#C67D4A]/30" />
       <div className="relative z-10 max-w-md px-12 text-white">
-        <div className="text-4xl font-heading font-bold mb-6">
-          Poi<span className="text-[#D4A574]">wood</span>
-        </div>
+        <Logo
+          variant="light"
+          showWordmark
+          className="mb-6"
+          markClassName="w-14 h-14"
+          wordmarkClassName="text-4xl"
+        />
         <h2 className="text-2xl font-heading font-semibold mb-4 leading-snug">
           Ahşabın sıcaklığını evinize taşıyın
         </h2>
