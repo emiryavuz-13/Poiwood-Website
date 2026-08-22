@@ -1,3 +1,5 @@
+import { COMPANY } from '../../config/site';
+
 const sections = [
   {
     title: 'Çerez Nedir?',
@@ -42,7 +44,7 @@ Yaygın tarayıcılarda çerez ayarları:
     title: 'Politika Güncellemeleri',
     content: `Bu çerez politikası en son 1 Mart 2026 tarihinde güncellenmiştir. Değişiklik yapılması halinde güncel politika bu sayfada yayımlanacaktır.
 
-Sorularınız için info@panelistan.com adresinden bize ulaşabilirsiniz.`,
+Sorularınız için ${COMPANY.email.display} adresinden veya ${COMPANY.phone.display} numaralı telefondan bize ulaşabilirsiniz.`,
   },
 ];
 

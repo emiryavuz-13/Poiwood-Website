@@ -1,7 +1,9 @@
+import { COMPANY } from '../../config/site';
+
 const sections = [
   {
     title: 'Genel Hükümler',
-    content: `Bu web sitesi Panelistan tarafından işletilmektedir. Siteyi kullanarak aşağıdaki koşulları kabul etmiş sayılırsınız. Bu koşulları kabul etmiyorsanız siteyi kullanmamanızı rica ederiz.
+    content: `Bu web sitesi, ${COMPANY.address.line1}, ${COMPANY.address.postalCode} ${COMPANY.address.district} adresinde faaliyet gösteren ${COMPANY.name} tarafından işletilmektedir. Siteyi kullanarak aşağıdaki koşulları kabul etmiş sayılırsınız. Bu koşulları kabul etmiyorsanız siteyi kullanmamanızı rica ederiz.
 
 Panelistan, bu kullanım koşullarını önceden bildirimde bulunmaksızın güncelleme hakkını saklı tutar. Güncellenmiş koşullar sitede yayımlandığı tarihten itibaren geçerlidir.`,
   },
@@ -27,7 +29,7 @@ Panelistan, bu kullanım koşullarını önceden bildirimde bulunmaksızın gün
   },
   {
     title: 'Fikri Mülkiyet',
-    content: `Bu sitedeki tüm içerikler (metin, görsel, logo, tasarım, yazılım) Panelistan'un fikri mülkiyetindedir. İzin alınmadan kopyalanamaz, çoğaltılamaz veya ticari amaçla kullanılamaz.
+    content: `Bu sitedeki tüm içerikler (metin, görsel, logo, tasarım, yazılım) Panelistan'ın fikri mülkiyetindedir. İzin alınmadan kopyalanamaz, çoğaltılamaz veya ticari amaçla kullanılamaz.
 
 Ürün fotoğrafları temsilidir; doğal ahşap ürünlerin renk ve doku farklılıkları olağandır ve iade gerekçesi oluşturmaz.`,
   },
@@ -43,7 +45,13 @@ Panelistan, bu kullanım koşullarını önceden bildirimde bulunmaksızın gün
   },
   {
     title: 'İletişim',
-    content: `Bu koşullarla ilgili sorularınız için info@panelistan.com adresinden bize ulaşabilirsiniz.
+    content: `Bu koşullarla ilgili sorularınız için bize ulaşabilirsiniz:
+
+• ${COMPANY.name}
+• Adres: ${COMPANY.address.line1}, ${COMPANY.address.postalCode} ${COMPANY.address.district}
+• Telefon: ${COMPANY.phone.display}
+• E-posta: ${COMPANY.email.display}
+• Çalışma saatleri: ${COMPANY.workingHours}
 
 Son güncelleme: 1 Mart 2026`,
   },

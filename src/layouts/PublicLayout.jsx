@@ -9,6 +9,7 @@ import { auth as firebaseAuth } from '../lib/firebase';
 import { useCart } from '../hooks/useCart';
 import { Button } from '../components/ui/button';
 import Logo from '../components/Logo';
+import { COMPANY } from '../config/site';
 
 const PublicLayout = () => {
   const { isAuthenticated, user, emailVerified } = useSelector((state) => state.auth);
@@ -347,22 +348,27 @@ const PublicLayout = () => {
                 wordmarkClassName="text-3xl"
               />
               <p className="text-white/70 mb-6 max-w-[280px] leading-relaxed">
-                El yapımı, doğal ahşap dekor ürünleri ile yaşam alanlarınıza sıcaklık katıyoruz.
+                {COMPANY.experienceYears} yıllık ahşap ustalığıyla, ölçüye özel üretilen doğal ahşap panel ve dekor ürünleri.
               </p>
               <div className="flex flex-col gap-3 mb-6">
-                <a href="tel:+902121234567" className="flex items-center gap-3 text-white/70 text-sm hover:text-white transition-colors">
-                  <Phone className="w-4 h-4" /> +90 212 123 45 67
+                <a href={COMPANY.phone.href} className="flex items-center gap-3 text-white/70 text-sm hover:text-white transition-colors">
+                  <Phone className="w-4 h-4" /> {COMPANY.phone.display}
                 </a>
-                <a href="mailto:info@panelistan.com" className="flex items-center gap-3 text-white/70 text-sm hover:text-white transition-colors">
-                  <Mail className="w-4 h-4" /> info@panelistan.com
+                <a href={COMPANY.email.href} className="flex items-center gap-3 text-white/70 text-sm hover:text-white transition-colors">
+                  <Mail className="w-4 h-4" /> {COMPANY.email.display}
                 </a>
-                <span className="flex items-center gap-3 text-white/70 text-sm">
-                  <MapPin className="w-4 h-4" /> Kadıköy, İstanbul
+                <span className="flex items-start gap-3 text-white/70 text-sm">
+                  <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    {COMPANY.address.line1}
+                    <br />
+                    {COMPANY.address.postalCode} {COMPANY.address.district}
+                  </span>
                 </span>
               </div>
               <div className="flex gap-3">
                 <a
-                  href="https://www.instagram.com/panelistann/"
+                  href={COMPANY.social.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Instagram"

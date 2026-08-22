@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { COMPANY } from '../../config/site';
 
 const faqData = [
   {
@@ -54,6 +55,27 @@ const faqData = [
       {
         q: 'İade kargo ücreti kime ait?',
         a: 'Ürün hasarı veya hatalı gönderim durumunda kargo ücreti bize aittir. Müşteri kaynaklı iadelerde kargo ücreti alıcıya aittir.',
+      },
+    ],
+  },
+  {
+    category: 'Panelistan Hakkında',
+    questions: [
+      {
+        q: 'Kaç yıldır bu işi yapıyorsunuz?',
+        a: `${COMPANY.foundedYear} yılından bu yana, yani ${COMPANY.experienceYears} yıldır ahşap sektöründeyiz. Yolculuğumuz Başakşehir Keresteciler Sanayi Sitesi'nde tek tezgâhlı küçük bir atölyede başladı; bugün aynı sanayi sitesinde çok daha büyük bir atölyede üretim yapıyoruz.`,
+      },
+      {
+        q: 'Ürünleri kendiniz mi üretiyorsunuz?',
+        a: 'Evet. Sattığımız ürünlerin tamamı kendi atölyemizde üretilir; kesim, kenar bantlama, zımpara ve yüzey işlemleri bizim ustalarımızın elinden geçer. Aracı bir üretici kullanmıyoruz.',
+      },
+      {
+        q: 'Atölyenizi ziyaret edebilir miyim?',
+        a: `Tabii ki. ${COMPANY.address.line1}, ${COMPANY.address.postalCode} ${COMPANY.address.district} adresindeki atölyemize ${COMPANY.workingHours} saatleri arasında bekleriz. Gelmeden önce ${COMPANY.phone.display} numaralı telefondan haber verirseniz sizin için hazırlık yaparız.`,
+      },
+      {
+        q: 'Toplu veya kurumsal sipariş veriyor musunuz?',
+        a: `Evet, proje bazlı ve toplu siparişler alıyoruz. Mimar, müteahhit ve kurumsal alımlar için özel fiyatlandırma yapıyoruz; ${COMPANY.phone.display} numarasından veya iletişim formundan bize ulaşabilirsiniz.`,
       },
     ],
   },

@@ -1,7 +1,9 @@
+import { COMPANY } from '../../config/site';
+
 const sections = [
   {
     title: 'Toplanan Veriler',
-    content: `Panelistan olarak, hizmetlerimizi sunabilmek için aşağıdaki kişisel verileri topluyoruz:
+    content: `${COMPANY.name} olarak, hizmetlerimizi sunabilmek için aşağıdaki kişisel verileri topluyoruz:
 
 • Ad, soyad ve iletişim bilgileri (e-posta, telefon)
 • Teslimat adresi bilgileri
@@ -53,7 +55,9 @@ Kişisel verileriniz hiçbir koşulda reklam veya pazarlama amacıyla üçüncü
 • İşlemenin kısıtlanmasını talep etme
 • Verilerinizin aktarıldığı üçüncü tarafları öğrenme
 
-Bu haklarınızı kullanmak için info@panelistan.com adresine başvurabilirsiniz.`,
+Bu haklarınızı kullanmak için ${COMPANY.email.display} adresine e-posta gönderebilir, ${COMPANY.phone.display} numaralı telefondan bize ulaşabilir veya ${COMPANY.address.line1}, ${COMPANY.address.postalCode} ${COMPANY.address.district} adresine yazılı başvuruda bulunabilirsiniz.
+
+Veri sorumlusu: ${COMPANY.name}`,
   },
   {
     title: 'Politika Güncellemeleri',
